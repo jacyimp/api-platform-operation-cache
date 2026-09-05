@@ -75,6 +75,10 @@
       "@cs",
       "@analyse",
       "@test"
+    ],
+    "coverage": [
+      "@php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-clover=coverage.xml",
+      "@php tools/check-coverage.php coverage.xml"
     ]
   },
   "extra": {
