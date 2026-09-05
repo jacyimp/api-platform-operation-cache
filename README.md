@@ -55,8 +55,7 @@ return [
 ];
 ```
 
-The bundle registers its own Symfony HttpKernel listeners and does not require
-API Platform's `use_symfony_listeners` option. It uses `cache.app` by default.
+It uses `cache.app` by default.
 [Choose a cache pool or configure services →](docs/symfony.md)
 
 ### Laravel
