@@ -6,6 +6,7 @@ namespace JacyImp\ApiPlatformOperationCache\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Exception\AuthIdentityResolutionException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -19,7 +20,7 @@ final readonly class SymfonyAuthIdentityResolver implements AuthIdentityResolver
     ) {
     }
 
-    public function resolve(): ?string
+    public function resolve(Request $request): ?string
     {
         $user = $this->tokenStorage
             ->getToken()

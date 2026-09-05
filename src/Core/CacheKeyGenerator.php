@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Core;
 
 use ApiPlatform\Metadata\HttpOperation;
-use JacyImp\ApiPlatformOperationCache\Metadata\VaryBy;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -16,18 +16,21 @@ final readonly class CacheKeyGenerator
     private const VERSION = 1;
 
     public function __construct(
-        private VaryByEvaluator $varyByEvaluator,
+        private OperationCacheEvaluator $cacheEvaluator,
     ) {
     }
 
-    /**
-     * @param list<VaryBy> $varyBy
-     */
     public function generate(
         HttpOperation $operation,
         Request $request,
-        array $varyBy = [],
-    ): string {
+        OperationCache $cache,
+    ): ?string {
+        $variation = $this->cacheEvaluator->evaluate($cache, $request);
+
+        if ($variation === null) {
+            return null;
+        }
+
         $payload = [
             'version' => self::VERSION,
             'operation' => [
@@ -42,10 +45,7 @@ final readonly class CacheKeyGenerator
                 'query' => $this->canonicalize($request->query->all()),
                 'format' => $request->getRequestFormat(),
             ],
-            'vary' => $this->varyByEvaluator->evaluate(
-                $request,
-                $varyBy,
-            ),
+            'vary' => $variation,
         ];
 
         return sprintf(
@@ -58,9 +58,6 @@ final readonly class CacheKeyGenerator
         );
     }
 
-    /**
-     * @return mixed
-     */
     private function canonicalize(mixed $value): mixed
     {
         if (!is_array($value)) {

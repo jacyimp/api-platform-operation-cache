@@ -47,7 +47,7 @@
   },
   "suggest": {
     "api-platform/laravel": "Required when using the Laravel integration.",
-    "symfony/security-core": "Required when using VaryByAuth with Symfony."
+    "symfony/security-core": "Required when using varyByAuth with Symfony."
   },
   "autoload": {
     "psr-4": {

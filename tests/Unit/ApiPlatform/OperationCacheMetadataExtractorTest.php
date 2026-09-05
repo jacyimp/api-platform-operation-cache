@@ -23,17 +23,14 @@ final class OperationCacheMetadataExtractorTest extends TestCase
 
     public function testItReturnsNullWhenOperationHasNoCacheMetadata(): void
     {
-        $operation = new Get();
-
-        self::assertNull($this->extractor->extract($operation));
+        self::assertNull($this->extractor->extract(new Get()));
     }
 
     public function testItExtractsOperationCacheMetadata(): void
     {
         $metadata = new OperationCache(
-            enabled: true,
             ttl: 300,
-            vary: ['Accept-Language'],
+            varyByHeaders: ['Accept-Language'],
         );
 
         $operation = new Get(

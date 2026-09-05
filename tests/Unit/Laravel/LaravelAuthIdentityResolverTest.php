@@ -17,14 +17,13 @@ final class LaravelAuthIdentityResolverTest extends TestCase
     public function testItReturnsNullForAnonymousRequest(): void
     {
         $request = Request::create('/');
-
         $request->setUserResolver(
             static fn (): null => null,
         );
 
-        $resolver = new LaravelAuthIdentityResolver($request);
-
-        self::assertNull($resolver->resolve());
+        self::assertNull(
+            (new LaravelAuthIdentityResolver())->resolve($request),
+        );
     }
 
     public function testItResolvesAuthenticatedUserIdentifier(): void
@@ -39,9 +38,10 @@ final class LaravelAuthIdentityResolverTest extends TestCase
             static fn (): Authenticatable => $user,
         );
 
-        $resolver = new LaravelAuthIdentityResolver($request);
-
-        self::assertSame('42', $resolver->resolve());
+        self::assertSame(
+            '42',
+            (new LaravelAuthIdentityResolver())->resolve($request),
+        );
     }
 
     public function testItRejectsEmptyAuthenticatedUserIdentifier(): void
@@ -56,14 +56,12 @@ final class LaravelAuthIdentityResolverTest extends TestCase
             static fn (): Authenticatable => $user,
         );
 
-        $resolver = new LaravelAuthIdentityResolver($request);
-
         $this->expectException(AuthIdentityResolutionException::class);
         $this->expectExceptionMessage(
             'Authenticated user identifier cannot be empty.',
         );
 
-        $resolver->resolve();
+        (new LaravelAuthIdentityResolver())->resolve($request);
     }
 
     public function testItRejectsUnsupportedAuthenticatedUserIdentifier(): void
@@ -78,13 +76,11 @@ final class LaravelAuthIdentityResolverTest extends TestCase
             static fn (): Authenticatable => $user,
         );
 
-        $resolver = new LaravelAuthIdentityResolver($request);
-
         $this->expectException(AuthIdentityResolutionException::class);
         $this->expectExceptionMessage(
             'Authenticated user identifier must be a string or integer.',
         );
 
-        $resolver->resolve();
+        (new LaravelAuthIdentityResolver())->resolve($request);
     }
 }

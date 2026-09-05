@@ -8,6 +8,7 @@ use JacyImp\ApiPlatformOperationCache\Exception\AuthIdentityResolutionException;
 use JacyImp\ApiPlatformOperationCache\Symfony\SymfonyAuthIdentityResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -18,14 +19,13 @@ final class SymfonyAuthIdentityResolverTest extends TestCase
     public function testItReturnsNullForAnonymousRequest(): void
     {
         $tokenStorage = $this->createMock(TokenStorageInterface::class);
-
         $tokenStorage
             ->method('getToken')
             ->willReturn(null);
 
         $resolver = new SymfonyAuthIdentityResolver($tokenStorage);
 
-        self::assertNull($resolver->resolve());
+        self::assertNull($resolver->resolve(Request::create('/')));
     }
 
     public function testItResolvesAuthenticatedUserIdentifier(): void
@@ -47,7 +47,10 @@ final class SymfonyAuthIdentityResolverTest extends TestCase
 
         $resolver = new SymfonyAuthIdentityResolver($tokenStorage);
 
-        self::assertSame('user-42', $resolver->resolve());
+        self::assertSame(
+            'user-42',
+            $resolver->resolve(Request::create('/')),
+        );
     }
 
     public function testItRejectsEmptyAuthenticatedUserIdentifier(): void
@@ -74,6 +77,6 @@ final class SymfonyAuthIdentityResolverTest extends TestCase
             'Authenticated user identifier cannot be empty.',
         );
 
-        $resolver->resolve();
+        $resolver->resolve(Request::create('/'));
     }
 }

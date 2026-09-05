@@ -6,13 +6,14 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 
 use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverLocatorInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
-use JacyImp\ApiPlatformOperationCache\Core\VaryByEvaluator;
-use JacyImp\ApiPlatformOperationCache\Metadata\VaryByHeader;
+use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 #[CoversClass(CacheKeyGenerator::class)]
@@ -21,17 +22,16 @@ final class CacheKeyGeneratorTest extends TestCase
     public function testItGeneratesStableKeyForSameRequest(): void
     {
         $generator = $this->generator();
-
         $operation = new Get(name: 'get_product');
-
+        $cache = new OperationCache(ttl: 300);
         $request = Request::create(
             'https://example.com/products/42?page=2',
         );
         $request->setRequestFormat('json');
 
         self::assertSame(
-            $generator->generate($operation, $request),
-            $generator->generate($operation, $request),
+            $generator->generate($operation, $request, $cache),
+            $generator->generate($operation, $request, $cache),
         );
     }
 
@@ -39,18 +39,18 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
+        $cache = new OperationCache(ttl: 300);
 
         $first = Request::create(
             'https://example.com/products?page=2&category=books',
         );
-
         $second = Request::create(
             'https://example.com/products?category=books&page=2',
         );
 
         self::assertSame(
-            $generator->generate($operation, $first),
-            $generator->generate($operation, $second),
+            $generator->generate($operation, $first, $cache),
+            $generator->generate($operation, $second, $cache),
         );
     }
 
@@ -58,20 +58,18 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
+        $cache = new OperationCache(ttl: 300);
 
         $first = Request::create(
-            'https://example.com/products'
-            . '?filter[name]=foo&filter[type]=book',
+            'https://example.com/products?filter[name]=foo&filter[type]=book',
         );
-
         $second = Request::create(
-            'https://example.com/products'
-            . '?filter[type]=book&filter[name]=foo',
+            'https://example.com/products?filter[type]=book&filter[name]=foo',
         );
 
         self::assertSame(
-            $generator->generate($operation, $first),
-            $generator->generate($operation, $second),
+            $generator->generate($operation, $first, $cache),
+            $generator->generate($operation, $second, $cache),
         );
     }
 
@@ -79,20 +77,18 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
+        $cache = new OperationCache(ttl: 300);
 
         $first = Request::create(
-            'https://example.com/products'
-            . '?sort[]=price&sort[]=name',
+            'https://example.com/products?sort[]=price&sort[]=name',
         );
-
         $second = Request::create(
-            'https://example.com/products'
-            . '?sort[]=name&sort[]=price',
+            'https://example.com/products?sort[]=name&sort[]=price',
         );
 
         self::assertNotSame(
-            $generator->generate($operation, $first),
-            $generator->generate($operation, $second),
+            $generator->generate($operation, $first, $cache),
+            $generator->generate($operation, $second, $cache),
         );
     }
 
@@ -100,15 +96,18 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_product');
+        $cache = new OperationCache(ttl: 300);
 
         self::assertNotSame(
             $generator->generate(
                 $operation,
                 Request::create('https://example.com/products/1'),
+                $cache,
             ),
             $generator->generate(
                 $operation,
                 Request::create('https://example.com/products/2'),
+                $cache,
             ),
         );
     }
@@ -117,15 +116,18 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
+        $cache = new OperationCache(ttl: 300);
 
         self::assertNotSame(
             $generator->generate(
                 $operation,
                 Request::create('https://example.com/products'),
+                $cache,
             ),
             $generator->generate(
                 $operation,
                 Request::create('https://other.example.com/products'),
+                $cache,
             ),
         );
     }
@@ -134,6 +136,7 @@ final class CacheKeyGeneratorTest extends TestCase
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
+        $cache = new OperationCache(ttl: 300);
 
         $json = Request::create('https://example.com/products');
         $json->setRequestFormat('json');
@@ -142,71 +145,57 @@ final class CacheKeyGeneratorTest extends TestCase
         $jsonLd->setRequestFormat('jsonld');
 
         self::assertNotSame(
-            $generator->generate($operation, $json),
-            $generator->generate($operation, $jsonLd),
+            $generator->generate($operation, $json, $cache),
+            $generator->generate($operation, $jsonLd, $cache),
         );
     }
 
     public function testOperationIdentityAffectsKey(): void
     {
         $generator = $this->generator();
-        $request = Request::create(
-            'https://example.com/products',
-        );
+        $request = Request::create('https://example.com/products');
+        $cache = new OperationCache(ttl: 300);
 
         self::assertNotSame(
             $generator->generate(
                 new Get(name: 'public_products'),
                 $request,
+                $cache,
             ),
             $generator->generate(
                 new Get(name: 'admin_products'),
                 $request,
+                $cache,
             ),
         );
     }
 
-    public function testVaryValuesAffectKey(): void
+    public function testVaryHeaderValuesAffectKey(): void
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
-
-        $english = Request::create(
-            'https://example.com/products',
+        $cache = new OperationCache(
+            ttl: 300,
+            varyByHeaders: ['Accept-Language'],
         );
+
+        $english = Request::create('https://example.com/products');
         $english->headers->set('Accept-Language', 'en');
 
-        $french = Request::create(
-            'https://example.com/products',
-        );
+        $french = Request::create('https://example.com/products');
         $french->headers->set('Accept-Language', 'fr');
 
-        $varyBy = [
-            new VaryByHeader('Accept-Language'),
-        ];
-
         self::assertNotSame(
-            $generator->generate(
-                $operation,
-                $english,
-                $varyBy,
-            ),
-            $generator->generate(
-                $operation,
-                $french,
-                $varyBy,
-            ),
+            $generator->generate($operation, $english, $cache),
+            $generator->generate($operation, $french, $cache),
         );
     }
 
-    public function testVaryDefinitionOrderDoesNotAffectKey(): void
+    public function testVaryHeaderOrderDoesNotAffectKey(): void
     {
         $generator = $this->generator();
         $operation = new Get(name: 'get_products');
-
-        $request = Request::create(
-            'https://example.com/products',
-        );
+        $request = Request::create('https://example.com/products');
         $request->headers->set('Accept', 'application/json');
         $request->headers->set('Accept-Language', 'en');
 
@@ -214,20 +203,36 @@ final class CacheKeyGeneratorTest extends TestCase
             $generator->generate(
                 $operation,
                 $request,
-                [
-                    new VaryByHeader('Accept'),
-                    new VaryByHeader('Accept-Language'),
-                ],
+                new OperationCache(
+                    ttl: 300,
+                    varyByHeaders: ['Accept', 'Accept-Language'],
+                ),
             ),
             $generator->generate(
                 $operation,
                 $request,
-                [
-                    new VaryByHeader('Accept-Language'),
-                    new VaryByHeader('Accept'),
-                ],
+                new OperationCache(
+                    ttl: 300,
+                    varyByHeaders: ['Accept-Language', 'Accept'],
+                ),
             ),
         );
+    }
+
+    public function testItReturnsNullWhenCacheConditionDoesNotMatch(): void
+    {
+        $generator = $this->generator([
+            KeyNeverCacheCondition::class => new KeyNeverCacheCondition(),
+        ]);
+
+        self::assertNull($generator->generate(
+            new Get(name: 'get_products'),
+            Request::create('https://example.com/products'),
+            new OperationCache(
+                ttl: 300,
+                when: KeyNeverCacheCondition::class,
+            ),
+        ));
     }
 
     public function testGeneratedKeyIsSafeAndCompact(): void
@@ -237,40 +242,65 @@ final class CacheKeyGeneratorTest extends TestCase
             Request::create(
                 'https://example.com/products?search=hello',
             ),
+            new OperationCache(ttl: 300),
         );
 
+        self::assertNotNull($key);
         self::assertMatchesRegularExpression(
             '/^api_platform_operation_cache\.v1\.[a-f0-9]{64}$/',
             $key,
         );
     }
 
-    private function generator(): CacheKeyGenerator
+    /**
+     * @param array<string, object> $services
+     */
+    private function generator(array $services = []): CacheKeyGenerator
     {
         return new CacheKeyGenerator(
-            new VaryByEvaluator(
-                new AnonymousAuthIdentityResolver(),
-                new EmptyVaryResolverLocator(),
+            new OperationCacheEvaluator(
+                new KeyAnonymousAuthIdentityResolver(),
+                new CacheStrategyRegistry(
+                    new KeyTestContainer($services),
+                ),
             ),
         );
     }
 }
 
-final class AnonymousAuthIdentityResolver implements AuthIdentityResolverInterface
+final class KeyAnonymousAuthIdentityResolver implements AuthIdentityResolverInterface
 {
-    public function resolve(): ?string
+    public function resolve(Request $request): ?string
     {
         return null;
     }
 }
 
-final class EmptyVaryResolverLocator implements VaryResolverLocatorInterface
+final class KeyNeverCacheCondition implements CacheConditionInterface
 {
-    public function get(string $resolver): VaryResolverInterface
+    public function matches(Request $request): bool
     {
-        throw new \LogicException(sprintf(
-            'Resolver "%s" is not registered.',
-            $resolver,
-        ));
+        return false;
+    }
+}
+
+final readonly class KeyTestContainer implements ContainerInterface
+{
+    /**
+     * @param array<string, object> $services
+     */
+    public function __construct(
+        private array $services,
+    ) {
+    }
+
+    public function get(string $id): object
+    {
+        return $this->services[$id];
+    }
+
+    public function has(string $id): bool
+    {
+        return isset($this->services[$id]);
     }
 }
