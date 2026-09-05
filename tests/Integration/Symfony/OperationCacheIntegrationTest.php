@@ -8,6 +8,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\Counting
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 final class OperationCacheIntegrationTest extends WebTestCase
 {
@@ -308,13 +309,13 @@ final class OperationCacheIntegrationTest extends WebTestCase
         );
 
         self::assertFalse(
-            $client->getResponse()->headers->has(
+            $this->getResponse($client)->headers->has(
                 'X-Cached-Copy',
             ),
         );
 
         self::assertFalse(
-            $client->getResponse()->headers->has(
+            $this->getResponse($client)->headers->has(
                 'X-Cache-Hit',
             ),
         );
@@ -324,7 +325,7 @@ final class OperationCacheIntegrationTest extends WebTestCase
             '/api/response-mutator-products/42',
         );
 
-        $response = $client->getResponse();
+        $response = $this->getResponse($client);
 
         self::assertSame(
             'yes',
@@ -375,7 +376,7 @@ final class OperationCacheIntegrationTest extends WebTestCase
             '/api/response-exclusion-products/42',
         );
 
-        $response = $client->getResponse();
+        $response = $this->getResponse($client);
 
         self::assertSame(
             'yes',
@@ -410,7 +411,7 @@ final class OperationCacheIntegrationTest extends WebTestCase
             '/api/response-default-products/42',
         );
 
-        $response = $client->getResponse();
+        $response = $this->getResponse($client);
 
         self::assertSame(
             '60',
@@ -448,13 +449,25 @@ final class OperationCacheIntegrationTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
 
-        $content = $client
-            ->getResponse()
-            ->getContent();
+        $content = $this->getResponse($client)->getContent();
 
         self::assertIsString($content);
 
         return $content;
+    }
+
+    private function getResponse(KernelBrowser $client): Response
+    {
+        return $this->asHttpResponse($client->getResponse());
+    }
+
+    private function asHttpResponse(object $response): Response
+    {
+        if (!$response instanceof Response) {
+            throw new \LogicException('The browser response must be an HTTP response.');
+        }
+
+        return $response;
     }
 
     private function createCacheClient(): KernelBrowser

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Symfony\DependencyInjection;
 
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
+use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -18,8 +20,9 @@ final class Configuration implements ConfigurationInterface
             'api_platform_operation_cache',
         );
 
-        $treeBuilder
-            ->getRootNode()
+        $rootNode = $this->asArrayNode($treeBuilder->getRootNode());
+
+        $rootNode
             ->children()
             ->scalarNode('cache_pool')
             ->cannotBeEmpty()
@@ -28,5 +31,14 @@ final class Configuration implements ConfigurationInterface
             ->end();
 
         return $treeBuilder;
+    }
+
+    private function asArrayNode(NodeDefinition $node): ArrayNodeDefinition
+    {
+        if (!$node instanceof ArrayNodeDefinition) {
+            throw new \LogicException('The configuration root node must be an array node.');
+        }
+
+        return $node;
     }
 }
