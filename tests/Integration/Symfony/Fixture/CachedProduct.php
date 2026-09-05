@@ -20,6 +20,16 @@ use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
                 ),
             ],
         ),
+        new Get(
+            uriTemplate: '/conditionally-uncached-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    when: NeverCacheCondition::class,
+                ),
+            ],
+        ),
     ],
     formats: ['json'],
 )]

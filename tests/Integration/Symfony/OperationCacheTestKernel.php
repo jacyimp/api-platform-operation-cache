@@ -7,6 +7,7 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 use ApiPlatform\Symfony\Bundle\ApiPlatformBundle;
 use JacyImp\ApiPlatformOperationCache\Symfony\ApiPlatformOperationCacheBundle;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
+use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\NeverCacheCondition;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -55,11 +56,20 @@ final class OperationCacheTestKernel extends Kernel
             ],
         );
 
-        $container
-            ->services()
+        $services = $container->services();
+
+        $services
             ->set(
                 CountingProductProvider::class,
                 CountingProductProvider::class,
+            )
+            ->autowire()
+            ->autoconfigure();
+
+        $services
+            ->set(
+                NeverCacheCondition::class,
+                NeverCacheCondition::class,
             )
             ->autowire()
             ->autoconfigure();

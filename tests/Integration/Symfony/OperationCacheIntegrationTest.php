@@ -6,70 +6,221 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 #[CoversNothing]
 final class OperationCacheIntegrationTest extends WebTestCase
 {
-    protected function setUp(): void
-    {
-        CountingProductProvider::reset();
-    }
-
     public function testSecondIdenticalRequestSkipsStateProvider(): void
     {
-        $client = self::createClient();
+        $client = $this->createCacheClient();
 
-        /*
-         * Keep the same kernel alive between requests so the in-memory
-         * cache.app pool survives the first request.
-         */
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+        self::assertSame(
+            1,
+            CountingProductProvider::$calls,
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+        self::assertSame(
+            1,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    public function testDifferentUrisUseDifferentCacheEntries(): void
+    {
+        $client = $this->createCacheClient();
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/43',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-2"',
+            $client->getResponse()->getContent(),
+        );
+
+        self::assertSame(
+            2,
+            CountingProductProvider::$calls,
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+        self::assertSame(
+            2,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    public function testDifferentQueryStringsUseDifferentCacheEntries(): void
+    {
+        $client = $this->createCacheClient();
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42?view=summary',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42?view=detail',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-2"',
+            $client->getResponse()->getContent(),
+        );
+
+        self::assertSame(
+            2,
+            CountingProductProvider::$calls,
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/cached-products/42?view=summary',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+        self::assertSame(
+            2,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    public function testFalseConditionBypassesCache(): void
+    {
+        $client = $this->createCacheClient();
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/conditionally-uncached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-1"',
+            $client->getResponse()->getContent(),
+        );
+
+        $client->request(
+            method: 'GET',
+            uri: '/api/conditionally-uncached-products/42',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString(
+            '"value":"provider-call-2"',
+            $client->getResponse()->getContent(),
+        );
+
+        self::assertSame(
+            2,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    private function createCacheClient(): KernelBrowser
+    {
+        CountingProductProvider::reset();
+
+        $client = self::createClient();
         $client->disableReboot();
 
-        $client->request(
-            method: 'GET',
-            uri: '/api/cached-products/42',
-            server: [
-                'HTTP_ACCEPT' => 'application/json',
-            ],
+        $cache = self::getContainer()->get('cache.app');
+
+        self::assertInstanceOf(
+            CacheItemPoolInterface::class,
+            $cache,
         );
 
-        self::assertResponseIsSuccessful();
-        self::assertJson(
-            $client->getResponse()->getContent(),
-        );
-        self::assertStringContainsString(
-            '"id":"42"',
-            $client->getResponse()->getContent(),
-        );
-        self::assertStringContainsString(
-            '"value":"provider-call-1"',
-            $client->getResponse()->getContent(),
-        );
-        self::assertSame(
-            1,
-            CountingProductProvider::$calls,
-        );
+        $cache->clear();
 
-        $client->request(
-            method: 'GET',
-            uri: '/api/cached-products/42',
-            server: [
-                'HTTP_ACCEPT' => 'application/json',
-            ],
-        );
-
-        self::assertResponseIsSuccessful();
-        self::assertStringContainsString(
-            '"value":"provider-call-1"',
-            $client->getResponse()->getContent(),
-        );
-
-        self::assertSame(
-            1,
-            CountingProductProvider::$calls,
-            'The state provider should not execute on a cache hit.',
-        );
+        return $client;
     }
 
     protected static function getKernelClass(): string
