@@ -6,12 +6,31 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use Psr\Cache\CacheItemPoolInterface;
+use PHPUnit\Framework\Attributes\After;
+use PHPUnit\Framework\Attributes\Before;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\ErrorHandler\ErrorHandler;
 use Symfony\Component\HttpFoundation\Response;
 
 final class OperationCacheIntegrationTest extends WebTestCase
 {
+    private bool $symfonyErrorHandlerWasRegistered = false;
+
+    #[Before]
+    protected function captureExceptionHandlerStack(): void
+    {
+        $this->symfonyErrorHandlerWasRegistered = self::isSymfonyErrorHandlerRegistered();
+    }
+
+    #[After]
+    protected function restoreExceptionHandlerStack(): void
+    {
+        if (!$this->symfonyErrorHandlerWasRegistered && self::isSymfonyErrorHandlerRegistered()) {
+            restore_exception_handler();
+        }
+    }
+
     public function testSecondIdenticalRequestSkipsStateProvider(): void
     {
         $client = $this->createCacheClient();
@@ -494,5 +513,13 @@ final class OperationCacheIntegrationTest extends WebTestCase
     protected static function getKernelClass(): string
     {
         return OperationCacheTestKernel::class;
+    }
+
+    private static function isSymfonyErrorHandlerRegistered(): bool
+    {
+        $current = set_exception_handler(static fn () => null);
+        restore_exception_handler();
+
+        return \is_array($current) && $current[0] instanceof ErrorHandler;
     }
 }
