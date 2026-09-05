@@ -300,6 +300,137 @@ final class OperationCacheIntegrationTest extends WebTestCase
         );
     }
 
+    public function testResponseMutatorRunsForCachedCopyAndCacheHit(): void
+    {
+        $client = $this->createCacheClient();
+
+        $this->getJson(
+            $client,
+            '/api/response-mutator-products/42',
+        );
+
+        self::assertFalse(
+            $client->getResponse()->headers->has(
+                'X-Cached-Copy',
+            ),
+        );
+
+        self::assertFalse(
+            $client->getResponse()->headers->has(
+                'X-Cache-Hit',
+            ),
+        );
+
+        $this->getJson(
+            $client,
+            '/api/response-mutator-products/42',
+        );
+
+        $response = $client->getResponse();
+
+        self::assertSame(
+            'yes',
+            $response->headers->get(
+                'X-Cached-Copy',
+            ),
+        );
+
+        self::assertSame(
+            'yes',
+            $response->headers->get(
+                'X-Cache-Hit',
+            ),
+        );
+
+        self::assertSame(
+            'should-not-survive',
+            $response->headers->get(
+                'X-Excluded',
+            ),
+        );
+
+        self::assertFalse(
+            $response->headers->has('Age'),
+        );
+
+        self::assertFalse(
+            $response->headers->has('Set-Cookie'),
+        );
+
+        self::assertSame(
+            1,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    public function testCustomResponseHeadersAreExcludedFromCachedResponse(): void
+    {
+        $client = $this->createCacheClient();
+
+        $this->getJson(
+            $client,
+            '/api/response-exclusion-products/42',
+        );
+
+        $this->getJson(
+            $client,
+            '/api/response-exclusion-products/42',
+        );
+
+        $response = $client->getResponse();
+
+        self::assertSame(
+            'yes',
+            $response->headers->get(
+                'X-Cached-Copy',
+            ),
+        );
+
+        self::assertFalse(
+            $response->headers->has(
+                'X-Excluded',
+            ),
+        );
+
+        self::assertSame(
+            1,
+            CountingProductProvider::$calls,
+        );
+    }
+
+    public function testDefaultResponseExclusionsCanBeDisabled(): void
+    {
+        $client = $this->createCacheClient();
+
+        $this->getJson(
+            $client,
+            '/api/response-default-products/42',
+        );
+
+        $this->getJson(
+            $client,
+            '/api/response-default-products/42',
+        );
+
+        $response = $client->getResponse();
+
+        self::assertSame(
+            '60',
+            $response->headers->get('Age'),
+        );
+
+        self::assertFalse(
+            $response->headers->has(
+                'Set-Cookie',
+            ),
+        );
+
+        self::assertSame(
+            1,
+            CountingProductProvider::$calls,
+        );
+    }
+
     /**
      * @param array<string, string> $server
      */

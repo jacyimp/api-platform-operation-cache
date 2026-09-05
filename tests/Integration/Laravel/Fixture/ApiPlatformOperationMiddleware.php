@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use Closure;
 use Illuminate\Http\Request;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ApiPlatformOperationMiddleware
@@ -41,6 +42,25 @@ final class ApiPlatformOperationMiddleware
             'resolver' => new OperationCache(
                 ttl: 300,
                 varyByResolver: TenantVaryResolver::class,
+            ),
+
+            'response' => new OperationCache(
+                ttl: 300,
+                responseMutator: ResponseBehaviorMutator::class,
+            ),
+
+            'response-exclusion' => new OperationCache(
+                ttl: 300,
+                excludeResponseHeaders: [
+                    'X-Excluded',
+                ],
+                responseMutator: ResponseBehaviorMutator::class,
+            ),
+
+            'response-defaults' => new OperationCache(
+                ttl: 300,
+                excludeDefaultResponseHeaders: false,
+                responseMutator: ResponseBehaviorMutator::class,
             ),
 
             default => new OperationCache(

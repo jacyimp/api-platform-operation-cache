@@ -57,6 +57,24 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     ): void {
         $this->cachedRoute(
             $router,
+            '/response-mutator-products/{id}',
+            'response',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/response-exclusion-products/{id}',
+            'response-exclusion',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/response-default-products/{id}',
+            'response-defaults',
+        );
+
+        $this->cachedRoute(
+            $router,
             '/cached-products/{id}',
             'plain',
         );
@@ -288,6 +306,101 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
 
         self::assertSame(
             2,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function responseMutatorRunsForCachedCopyAndCacheHit(): void
+    {
+        $first = $this->getJson(
+            '/response-mutator-products/42',
+        );
+
+        $first
+            ->assertOk()
+            ->assertHeaderMissing(
+                'X-Cached-Copy',
+            )
+            ->assertHeaderMissing(
+                'X-Cache-Hit',
+            );
+
+        $second = $this->getJson(
+            '/response-mutator-products/42',
+        );
+
+        $second
+            ->assertOk()
+            ->assertHeader(
+                'X-Cached-Copy',
+                'yes',
+            )
+            ->assertHeader(
+                'X-Cache-Hit',
+                'yes',
+            )
+            ->assertHeader(
+                'X-Excluded',
+                'should-not-survive',
+            )
+            ->assertHeaderMissing('Age')
+            ->assertHeaderMissing(
+                'Set-Cookie',
+            );
+
+        self::assertSame(
+            1,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function customResponseHeadersAreExcludedFromCachedResponse(): void
+    {
+        $this->getJson(
+            '/response-exclusion-products/42',
+        )->assertOk();
+
+        $this->getJson(
+            '/response-exclusion-products/42',
+        )
+            ->assertOk()
+            ->assertHeader(
+                'X-Cached-Copy',
+                'yes',
+            )
+            ->assertHeaderMissing(
+                'X-Excluded',
+            );
+
+        self::assertSame(
+            1,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function defaultResponseExclusionsCanBeDisabled(): void
+    {
+        $this->getJson(
+            '/response-default-products/42',
+        )->assertOk();
+
+        $this->getJson(
+            '/response-default-products/42',
+        )
+            ->assertOk()
+            ->assertHeader(
+                'Age',
+                '60',
+            )
+            ->assertHeaderMissing(
+                'Set-Cookie',
+            );
+
+        self::assertSame(
+            1,
             CountingEndpoint::$calls,
         );
     }

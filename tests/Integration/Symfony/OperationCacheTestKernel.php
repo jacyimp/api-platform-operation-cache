@@ -6,6 +6,7 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use ApiPlatform\Symfony\Bundle\ApiPlatformBundle;
 use JacyImp\ApiPlatformOperationCache\Symfony\ApiPlatformOperationCacheBundle;
+use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\NeverCacheCondition;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\RequestHeaderAuthIdentityResolver;
@@ -66,6 +67,7 @@ final class OperationCacheTestKernel extends Kernel
                 NeverCacheCondition::class,
                 RequestHeaderAuthIdentityResolver::class,
                 TenantVaryResolver::class,
+                ResponseBehaviorMutator::class,
             ] as $service
         ) {
             $services

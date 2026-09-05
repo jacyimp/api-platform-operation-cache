@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 
 #[ApiResource(
     operations: [
@@ -59,6 +60,40 @@ use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
                 OperationCache::class => new OperationCache(
                     ttl: 300,
                     varyByResolver: TenantVaryResolver::class,
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/response-mutator-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    responseMutator: ResponseBehaviorMutator::class,
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/response-exclusion-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    excludeResponseHeaders: [
+                        'X-Excluded',
+                    ],
+                    responseMutator: ResponseBehaviorMutator::class,
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/response-default-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    excludeDefaultResponseHeaders: false,
+                    responseMutator: ResponseBehaviorMutator::class,
                 ),
             ],
         ),
