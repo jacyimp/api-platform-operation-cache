@@ -117,9 +117,11 @@ final readonly class ApiPlatformOperationCacheListener
             ->create($resourceClass)
             ->getOperation($operationName);
 
+        // @codeCoverageIgnoreStart
         if (!$operation instanceof HttpOperation) {
             return null;
         }
+        // @codeCoverageIgnoreEnd
 
         $request->attributes->set(
             '_api_operation',

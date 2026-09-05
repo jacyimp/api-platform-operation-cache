@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Symfony\EventListener;
 
+use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
+use ApiPlatform\Metadata\Resource\ResourceMetadataCollection;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
@@ -208,6 +211,27 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
         self::assertSame(1, $store->putCalls);
     }
 
+    public function testItIgnoresSubResponses(): void
+    {
+        $store = new ListenerTestCacheStore();
+        $event = new ResponseEvent($this->createMock(HttpKernelInterface::class), $this->requestWithCachedOperation(), HttpKernelInterface::SUB_REQUEST, new Response('{}'),);
+        $this->listener($store)->onKernelResponse($event);
+        self::assertSame(0, $store->putCalls);
+    }
+
+    public function testItResolvesOperationFromResourceMetadata(): void
+    {
+        $operation = new Get(name: 'products');
+        $factory = $this->createMock(ResourceMetadataCollectionFactoryInterface::class,);
+        $factory->method('create')->with('App\\Product')->willReturn(new ResourceMetadataCollection('App\\Product', [new ApiResource(operations: [$operation])],),);
+        $request = Request::create('/products');
+        $request->attributes->set('_api_resource_class', 'App\\Product');
+        $request->attributes->set('_api_operation_name', 'products');
+        $event = new RequestEvent($this->createMock(HttpKernelInterface::class), $request, HttpKernelInterface::MAIN_REQUEST,);
+        $this->listener(new ListenerTestCacheStore(), $factory)
+            ->onKernelRequest($event);
+        self::assertInstanceOf(Get::class, $request->attributes->get('_api_operation'),);
+    }
     private function requestWithCachedOperation(): Request
     {
         $request = Request::create('/products');
@@ -227,9 +251,8 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
         return $request;
     }
 
-    private function listener(
-        ListenerTestCacheStore $store,
-    ): ApiPlatformOperationCacheListener {
+    private function listener(ListenerTestCacheStore $store, ?ResourceMetadataCollectionFactoryInterface $resourceMetadataCollectionFactory = null,): ApiPlatformOperationCacheListener
+    {
         $registry = new CacheStrategyRegistry(
             new ListenerTestContainer(),
         );
@@ -249,6 +272,7 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
                     $registry,
                 ),
             ),
+            $resourceMetadataCollectionFactory,
         );
     }
 }

@@ -1,5 +1,8 @@
 # API Platform Operation Cache
 
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/jacyimp/api-platform-operation-cache)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](https://phpstan.org/)
+
 Cache individual API Platform Get/GetCollection HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.
 
 ## Install

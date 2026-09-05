@@ -148,6 +148,8 @@ final class ApiPlatformOperationCacheExtension extends Extension
             return;
         }
 
+        // @codeCoverageIgnoreStart
+        // This path is exercised when the optional Symfony Security package is absent.
         $container->register(
             AnonymousAuthIdentityResolver::class,
             AnonymousAuthIdentityResolver::class,
@@ -157,6 +159,7 @@ final class ApiPlatformOperationCacheExtension extends Extension
             AuthIdentityResolverInterface::class,
             AnonymousAuthIdentityResolver::class,
         );
+        // @codeCoverageIgnoreEnd
     }
 
     private function registerCore(

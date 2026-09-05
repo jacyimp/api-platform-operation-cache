@@ -12,6 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(LaravelCacheStrategyLocator::class)]
+#[CoversClass(InvalidCacheStrategyException::class)]
 final class LaravelCacheStrategyLocatorTest extends TestCase
 {
     public function testItResolvesBoundService(): void
@@ -57,15 +58,15 @@ final class LaravelCacheStrategyLocatorTest extends TestCase
         );
 
         $application
-            ->method('bound')
-            ->willReturn(false);
+        ->method('bound')
+        ->willReturn(false);
 
         $application
-            ->method('make')
-            ->with(LaravelLocatorTestStrategy::class)
-            ->willReturn(
-                new LaravelLocatorTestStrategy(),
-            );
+        ->method('make')
+        ->with(LaravelLocatorTestStrategy::class)
+        ->willReturn(
+            new LaravelLocatorTestStrategy(),
+        );
 
         $locator = new LaravelCacheStrategyLocator(
             $application,
@@ -92,8 +93,8 @@ final class LaravelCacheStrategyLocatorTest extends TestCase
         );
 
         $application
-            ->method('bound')
-            ->willReturn(false);
+        ->method('bound')
+        ->willReturn(false);
 
         $locator = new LaravelCacheStrategyLocator(
             $application,
@@ -106,5 +107,20 @@ final class LaravelCacheStrategyLocatorTest extends TestCase
         $locator->get(
             'Unknown\\Cache\\Strategy',
         );
+    }
+
+    public function testItRejectsAResolvedNonObjectService(): void
+    {
+        $application = $this->createMock(Application::class);
+        $application->method('bound')->willReturn(true);
+        $application->method('make')->willReturn('invalid');
+        $this->expectException(InvalidCacheStrategyException::class);
+        (new LaravelCacheStrategyLocator($application))->get('service');
+    }
+
+    public function testInvalidCacheStrategyExceptionMessages(): void
+    {
+        self::assertSame('Cache strategy "unknown" is not registered.', InvalidCacheStrategyException::notFound('unknown')->getMessage(),);
+        self::assertSame('Cache strategy "service" must implement ExpectedType.', InvalidCacheStrategyException::invalidType('service', 'ExpectedType',)->getMessage(),);
     }
 }

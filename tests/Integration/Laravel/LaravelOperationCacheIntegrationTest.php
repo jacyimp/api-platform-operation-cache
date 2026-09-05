@@ -441,6 +441,38 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             LaravelServiceProvider::MIDDLEWARE,
             $middleware,
         );
+
+        (new LaravelServiceProvider($this->application()))->register();
+
+        $registeredMiddleware = $this->application()
+            ->make(Repository::class)
+            ->get('api-platform.defaults.middleware', []);
+
+        self::assertIsArray($registeredMiddleware);
+        self::assertCount(
+            1,
+            array_keys(
+                $registeredMiddleware,
+                LaravelServiceProvider::MIDDLEWARE,
+                true,
+            ),
+        );
+
+        $this->application()
+            ->make(Repository::class)
+            ->set('api-platform.defaults.middleware', 'custom-middleware');
+
+        (new LaravelServiceProvider($this->application()))->register();
+
+        self::assertSame(
+            [
+                'custom-middleware',
+                LaravelServiceProvider::MIDDLEWARE,
+            ],
+            $this->application()
+                ->make(Repository::class)
+                ->get('api-platform.defaults.middleware'),
+        );
     }
 
     /**

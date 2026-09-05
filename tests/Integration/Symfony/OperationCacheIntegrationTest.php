@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
-use PHPUnit\Framework\Attributes\CoversNothing;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-#[CoversNothing]
 final class OperationCacheIntegrationTest extends WebTestCase
 {
     public function testSecondIdenticalRequestSkipsStateProvider(): void

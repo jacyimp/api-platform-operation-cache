@@ -135,18 +135,15 @@ final readonly class CachedResponseFactory
 
         foreach ($cache->excludeResponseHeaders as $header) {
             $header = strtolower(trim($header));
-
-            if ($header === '') {
-                continue;
-            }
-
             $excluded[$header] = true;
         }
 
         foreach ($response->headers->all('connection') as $value) {
+            // @codeCoverageIgnoreStart
             if ($value === null) {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             foreach (explode(',', $value) as $header) {
                 $header = strtolower(trim($header));

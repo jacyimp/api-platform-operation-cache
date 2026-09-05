@@ -188,4 +188,12 @@ final class ResponseCachePolicyTest extends TestCase
             $this->policy->allowsResponse($response),
         );
     }
+
+    public function testItAllowsMultipleNormalVaryHeaderValues(): void
+    {
+        $response = new Response('{}');
+        $response->headers->set('Vary', 'Accept-Language');
+        $response->headers->set('Vary', 'Accept', false);
+        self::assertTrue($this->policy->allowsResponse($response));
+    }
 }

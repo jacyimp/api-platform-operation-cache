@@ -10,6 +10,7 @@ use JacyImp\ApiPlatformOperationCache\Exception\AuthIdentityResolutionException;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelAuthIdentityResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
 #[CoversClass(LaravelAuthIdentityResolver::class)]
 final class LaravelAuthIdentityResolverTest extends TestCase
@@ -26,6 +27,10 @@ final class LaravelAuthIdentityResolverTest extends TestCase
         );
     }
 
+    public function testItReturnsNullForNonLaravelRequest(): void
+    {
+        self::assertNull((new LaravelAuthIdentityResolver())->resolve(SymfonyRequest::create('/'),),);
+    }
     public function testItResolvesAuthenticatedUserIdentifier(): void
     {
         $user = $this->createMock(Authenticatable::class);

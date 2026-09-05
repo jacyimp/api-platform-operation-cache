@@ -429,6 +429,22 @@ final class CachedResponseFactoryTest extends TestCase
         self::assertSame($sorted, $keys);
     }
 
+    public function testItIgnoresEmptyConnectionHeaderTokens(): void
+    {
+        $cached = $this->factory()->capture(new Response('{}', headers: [
+                'Connection' => ' , ',
+                'X-Keep-Me' => 'yes',
+            ]), Request::create('/'), new OperationCache(ttl: 300),);
+        self::assertSame(['yes'], $cached->headers['x-keep-me']);
+    }
+
+    public function testItRejectsAResponseWithoutMaterializedContent(): void
+    {
+        $response = $this->createMock(Response::class);
+        $response->method('getContent')->willReturn(false);
+        $this->expectException(\LogicException::class);
+        $this->factory()->capture($response, Request::create('/'), new OperationCache(ttl: 300),);
+    }
     /**
      * @param array<string, object> $services
      */
