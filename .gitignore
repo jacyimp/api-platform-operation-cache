@@ -1,8 +1,11 @@
 .idea
 vendor
+tools/infection/vendor
 var
 .phpcs.cache
 composer.lock
 .phpunit.cache
 config/reference.php
 coverage.xml
+infection.log
+infection-summary.json

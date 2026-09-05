@@ -1,6 +1,8 @@
 # API Platform Operation Cache
 
+[![CI](https://github.com/jacyimp/api-platform-operation-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/jacyimp/api-platform-operation-cache/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/jacyimp/api-platform-operation-cache)
+[![Infection MSI](https://img.shields.io/badge/Infection%20MSI-100%25-brightgreen)](https://github.com/jacyimp/api-platform-operation-cache/actions/workflows/ci.yml)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](https://phpstan.org/)
 
 Cache individual API Platform Get/GetCollection HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.

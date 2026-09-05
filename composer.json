@@ -79,6 +79,10 @@
     "coverage": [
       "@php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-clover=coverage.xml",
       "@php tools/check-coverage.php coverage.xml"
+    ],
+    "infection": [
+      "@composer --working-dir=tools/infection install --no-interaction --no-progress",
+      "@php tools/infection/vendor/bin/infection --configuration=infection.json"
     ]
   },
   "extra": {

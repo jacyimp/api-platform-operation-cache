@@ -1,0 +1,13 @@
+{
+    "name": "jacyimp/api-platform-operation-cache-infection",
+    "description": "Isolated Infection tool dependencies.",
+    "license": "proprietary",
+    "require-dev": {
+        "infection/infection": "^0.35"
+    },
+    "config": {
+        "allow-plugins": {
+            "infection/extension-installer": true
+        }
+    }
+}
