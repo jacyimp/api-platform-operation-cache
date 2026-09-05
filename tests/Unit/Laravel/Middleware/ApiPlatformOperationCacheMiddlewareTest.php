@@ -159,7 +159,7 @@ final class ApiPlatformOperationCacheMiddlewareTest extends TestCase
             new Get(
                 name: 'get_products',
                 extraProperties: [
-                    OperationCache::class => new OperationCache(
+                    new OperationCache(
                         ttl: 300,
                     ),
                 ],

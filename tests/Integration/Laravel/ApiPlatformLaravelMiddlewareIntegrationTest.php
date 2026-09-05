@@ -90,7 +90,7 @@ final class ApiPlatformLaravelMiddlewareIntegrationTest extends TestCase
             name: $operationName,
             uriTemplate: '/api-platform-cached/{id}',
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                 ),
             ],

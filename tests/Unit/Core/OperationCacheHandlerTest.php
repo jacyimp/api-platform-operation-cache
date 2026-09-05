@@ -81,7 +81,7 @@ final class OperationCacheHandlerTest extends TestCase
 
         $operation = new Get(
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     when: HandlerNeverCacheCondition::class,
                 ),
@@ -222,7 +222,7 @@ final class OperationCacheHandlerTest extends TestCase
 
         $operation = new Get(
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     when: HandlerCountingCondition::class,
                 ),
@@ -253,7 +253,7 @@ final class OperationCacheHandlerTest extends TestCase
         return new Get(
             name: 'get_products',
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                 ),
             ],

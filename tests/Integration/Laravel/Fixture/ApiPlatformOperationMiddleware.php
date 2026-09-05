@@ -82,7 +82,7 @@ final class ApiPlatformOperationMiddleware
                 name: 'cached_product_' . $scenario,
                 uriTemplate: '/cached-products/{id}',
                 extraProperties: [
-                    OperationCache::class => $cache,
+                    $cache,
                 ],
             ),
         );

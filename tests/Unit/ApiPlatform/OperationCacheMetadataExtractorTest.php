@@ -27,7 +27,7 @@ final class OperationCacheMetadataExtractorTest extends TestCase
         self::assertNull($this->extractor->extract(new Get()));
     }
 
-    public function testItExtractsOperationCacheMetadata(): void
+    public function testItExtractsInstanceBasedOperationCacheMetadata(): void
     {
         $metadata = new OperationCache(
             ttl: 300,
@@ -36,11 +36,29 @@ final class OperationCacheMetadataExtractorTest extends TestCase
 
         $operation = new Get(
             extraProperties: [
-                OperationCache::class => $metadata,
+                $metadata,
             ],
         );
 
         self::assertSame($metadata, $this->extractor->extract($operation));
+    }
+
+    public function testItExtractsClassKeyedOperationCacheMetadataForBackwardCompatibility(): void
+    {
+        $metadata = new OperationCache(ttl: 300);
+
+        self::assertSame($metadata, $this->extractor->extract(new Get(
+            extraProperties: [OperationCache::class => $metadata],
+        )));
+    }
+
+    public function testItDoesNotCountTheSameOperationCacheInstanceTwice(): void
+    {
+        $metadata = new OperationCache(ttl: 300);
+
+        self::assertSame($metadata, $this->extractor->extract(new Get(
+            extraProperties: [OperationCache::class => $metadata, $metadata],
+        )));
     }
 
     public function testItRejectsInvalidOperationCacheMetadata(): void
@@ -59,6 +77,34 @@ final class OperationCacheMetadataExtractorTest extends TestCase
         ));
 
         $this->extractor->extract($operation);
+    }
+
+    public function testItRejectsMultipleDistinctOperationCacheInstances(): void
+    {
+        $this->expectException(InvalidOperationCacheMetadataException::class);
+        $this->expectExceptionMessage(sprintf(
+            'Operation extra properties must contain at most one instance of %s.',
+            OperationCache::class,
+        ));
+
+        $this->extractor->extract(new Get(extraProperties: [
+            OperationCache::class => new OperationCache(ttl: 300),
+            new OperationCache(ttl: 60),
+        ]));
+    }
+
+    public function testOperationCacheCoexistsWithRepeatedInvalidationMetadata(): void
+    {
+        $cache = new OperationCache(ttl: 300);
+        $first = new OperationCacheInvalidation(group: 'product:{id}');
+        $second = new OperationCacheInvalidation(group: 'products');
+        $operation = new Get(extraProperties: [$cache, $first, $second]);
+
+        self::assertSame($cache, $this->extractor->extract($operation));
+        self::assertSame(
+            [$first, $second],
+            $this->extractor->extractInvalidations($operation),
+        );
     }
 
     public function testItExtractsRepeatedInvalidationMetadata(): void

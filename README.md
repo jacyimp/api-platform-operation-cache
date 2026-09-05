@@ -19,10 +19,10 @@ use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 
 #[ApiResource(operations: [
     new Get(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 300),
+        new OperationCache(ttl: 300),
     ]),
     new GetCollection(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 60),
+        new OperationCache(ttl: 60),
     ]),
     // Keep your existing write and custom operations here.
 ])]
@@ -80,10 +80,10 @@ use JacyImp\ApiPlatformOperationCache\Metadata\OperationCacheInvalidation;
 
 #[ApiResource(operations: [
     new Get(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 300, groups: ['product:{id}']),
+        new OperationCache(ttl: 300, groups: ['product:{id}']),
     ]),
     new GetCollection(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 60, groups: ['products']),
+        new OperationCache(ttl: 60, groups: ['products']),
     ]),
     new Post(extraProperties: [
         new OperationCacheInvalidation(group: 'products'),

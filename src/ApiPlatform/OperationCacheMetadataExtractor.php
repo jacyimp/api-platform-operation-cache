@@ -17,22 +17,31 @@ final class OperationCacheMetadataExtractor
     public function extract(Operation $operation): ?OperationCache
     {
         $extraProperties = $operation->getExtraProperties() ?? [];
+        $metadataByObjectId = [];
 
-        if (!array_key_exists(OperationCache::class, $extraProperties)) {
-            return null;
+        foreach ($extraProperties as $key => $metadata) {
+            if ($metadata instanceof OperationCache) {
+                $metadataByObjectId[spl_object_id($metadata)] = $metadata;
+                continue;
+            }
+
+            if ($key === OperationCache::class) {
+                throw new InvalidOperationCacheMetadataException(sprintf(
+                    'Extra property "%s" must be an instance of %s.',
+                    OperationCache::class,
+                    OperationCache::class,
+                ));
+            }
         }
 
-        $metadata = $extraProperties[OperationCache::class];
-
-        if (!$metadata instanceof OperationCache) {
+        if (count($metadataByObjectId) > 1) {
             throw new InvalidOperationCacheMetadataException(sprintf(
-                'Extra property "%s" must be an instance of %s.',
-                OperationCache::class,
+                'Operation extra properties must contain at most one instance of %s.',
                 OperationCache::class,
             ));
         }
 
-        return $metadata;
+        return array_values($metadataByObjectId)[0] ?? null;
     }
 
     /**

@@ -16,14 +16,14 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/cached-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(ttl: 300, groups: ['product:{id}'],),
+                new OperationCache(ttl: 300, groups: ['product:{id}'],),
             ],
         ),
         new Get(
             uriTemplate: '/conditionally-uncached-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     when: NeverCacheCondition::class,
                 ),
@@ -33,7 +33,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/header-vary-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     varyByHeaders: [
                         'Accept-Language',
@@ -45,14 +45,14 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/default-vary-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(ttl: 300),
+                new OperationCache(ttl: 300),
             ],
         ),
         new Get(
             uriTemplate: '/no-default-vary-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     includeDefaultVary: false,
                 ),
@@ -62,7 +62,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/auth-vary-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     varyByAuth: RequestHeaderAuthIdentityResolver::class,
                 ),
@@ -72,7 +72,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/resolver-vary-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     varyByResolver: TenantVaryResolver::class,
                 ),
@@ -82,7 +82,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/response-mutator-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     responseMutator: ResponseBehaviorMutator::class,
                 ),
@@ -92,7 +92,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/response-exclusion-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     excludeResponseHeaders: [
                         'X-Excluded',
@@ -105,7 +105,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/response-default-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
+                new OperationCache(
                     ttl: 300,
                     excludeDefaultResponseHeaders: false,
                     responseMutator: ResponseBehaviorMutator::class,
