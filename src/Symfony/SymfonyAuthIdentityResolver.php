@@ -16,21 +16,23 @@ use Symfony\Component\Security\Core\User\UserInterface;
 final readonly class SymfonyAuthIdentityResolver implements AuthIdentityResolverInterface
 {
     public function __construct(
-        private TokenStorageInterface $tokenStorage,
+        private ?TokenStorageInterface $tokenStorage = null,
     ) {
     }
 
     public function resolve(Request $request): ?string
     {
         $user = $this->tokenStorage
-            ->getToken()
+            ?->getToken()
             ?->getUser();
 
         if (!$user instanceof UserInterface) {
             return null;
         }
 
-        $identifier = trim($user->getUserIdentifier());
+        $identifier = trim(
+            $user->getUserIdentifier(),
+        );
 
         if ($identifier === '') {
             throw new AuthIdentityResolutionException(
