@@ -30,6 +30,38 @@ use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
                 ),
             ],
         ),
+        new Get(
+            uriTemplate: '/header-vary-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    varyByHeaders: [
+                        'Accept-Language',
+                    ],
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/auth-vary-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    varyByAuth: RequestHeaderAuthIdentityResolver::class,
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/resolver-vary-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    varyByResolver: TenantVaryResolver::class,
+                ),
+            ],
+        ),
     ],
     formats: ['json'],
 )]
