@@ -5,11 +5,11 @@
 [![Infection MSI](https://img.shields.io/badge/Infection%20MSI-100%25-brightgreen)](https://github.com/jacyimp/api-platform-operation-cache/actions/workflows/ci.yml)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen)](https://phpstan.org/)
 
-Cache individual API Platform Get/GetCollection HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.
+Cache API Platform `Get` and `GetCollection` responses in Symfony or Laravel. Cache hits skip provider/controller processing. Caching is opt-in per operation.
 
-## Cache Product detail and collection responses
+## Usage
 
-For an existing `Product` resource, add `OperationCache` to the read operations you want to cache. Keep your existing fields, persistence mapping, and other operations.
+Add `OperationCache` to the operations you want to cache:
 
 ```php
 use ApiPlatform\Metadata\ApiResource;
@@ -32,11 +32,7 @@ final class Product
 }
 ```
 
-The first cacheable response is stored; matching requests reuse it until expiry. `ttl` is required, in seconds, and must be greater than zero.
-
-With the default resource routes, `/products/42` is cached for five minutes and `/products` for one minute. Query parameters are part of the cache key, so collection pages and filters get separate entries automatically.
-
-If expiry is enough for your data, this is all the operation metadata you need. For user-specific content, [separate entries by authenticated identity](#cache-user-specific-responses).
+`ttl` is required and must be a positive number of seconds. Matching requests reuse the stored response until expiry. Query parameters give pages and filters separate entries. For user-specific content, [vary by authenticated identity](#cache-user-specific-responses).
 
 ## Install
 
@@ -65,13 +61,13 @@ API Platform's `use_symfony_listeners` option. It uses `cache.app` by default.
 
 ### Laravel
 
-Composer package discovery registers the provider, which adds the cache middleware to API Platform's default middleware configuration. Uses Laravel's default cache store.
+Package discovery adds the cache middleware to API Platform's default middleware configuration. It uses Laravel's default cache store.
 
 [Choose another cache store →](docs/laravel.md)
 
-## Refresh Product caches after writes
+## Invalidate after writes
 
-When changes should appear before the TTL expires, assign groups to your cached reads and invalidate them on successful writes. This example uses `products` for collection responses and `product:{id}` for each detail response:
+Assign groups to cached reads and invalidate them on successful writes:
 
 ```php
 use ApiPlatform\Metadata\ApiResource;
@@ -108,13 +104,13 @@ final class Product
 }
 ```
 
-Creating a product invalidates cached collections, including their pages and filters. Updating or deleting a product also invalidates its detail response. Failed operations do not invalidate caches. The next matching read rebuilds the response.
+In this example, `Post` invalidates cached product collections; `Patch` and `Delete` also invalidate the product's detail response. Failed operations leave caches intact. The next matching read rebuilds the response.
 
-`{id}` comes from the operation's URI variables; use your own variable name if it differs. If your resource exposes `Put`, add the same invalidation rules as `Patch`. Add these rules to custom write operations too, such as a publish action. Writes outside these operations need explicit invalidation.
+`{id}` uses the operation's URI variable name. Apply the same rules to `Put` and custom writes as needed. Writes outside these operations require explicit invalidation.
 
 [Advanced groups, conditional invalidation, and invalidating from application code](docs/cache-groups.md)
 
-## Separate responses by language or currency
+## Vary by headers
 
 The cache key already includes the operation, host, method, path, query parameters, and request format. Add headers that change your response:
 
@@ -125,23 +121,20 @@ new OperationCache(
 )
 ```
 
-Application configuration may provide default vary headers. Operations include them unless `includeDefaultVary: false` is set. The built-in list is empty; configure `Accept-Language` only when responses are localized, and use `varyByAuth` instead of the raw `Authorization` header.
+Default vary headers are empty. Operations inherit configured defaults unless `includeDefaultVary: false` is set. Use `varyByAuth` for authenticated identity.
 
 ## Cache user-specific responses
 
-Enable `varyByAuth` for responses that depend on the authenticated user:
+`varyByAuth` defaults to `false`. Enable it for responses that depend on the authenticated user:
 
 ```php
 new OperationCache(
     ttl: 300,
     varyByAuth: true,
-    varyByHeaders: ['Accept-Language'],
 )
 ```
 
 Each authenticated identity gets separate entries; anonymous requests share an anonymous identity. Symfony uses `getUserIdentifier()` (requires Symfony Security); Laravel uses `getAuthIdentifier()`.
-
-`varyByAuth` defaults to `false`, so configure it or an equivalent custom variation for user-specific content.
 
 [Vary by tenant, account, or custom context →](docs/custom-variation.md)
 
