@@ -7,12 +7,11 @@ namespace JacyImp\ApiPlatformOperationCache\Metadata;
 final readonly class OperationCache
 {
     /**
-     * @param list<string>|null $vary
+     * @param list<VaryBy> $varyBy
      */
     public function __construct(
-        public ?bool $enabled = null,
-        public ?int $ttl = null,
-        public ?array $vary = null,
+        public int $ttl,
+        public array $varyBy = [],
     ) {
     }
 }
