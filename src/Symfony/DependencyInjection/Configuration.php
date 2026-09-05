@@ -27,7 +27,6 @@ final class Configuration implements ConfigurationInterface
             ->scalarNode('cache_pool')
             ->cannotBeEmpty()
             ->defaultValue('cache.app')
-            ->end()
             ->end();
 
         return $treeBuilder;
