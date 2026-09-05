@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
+use JacyImp\ApiPlatformOperationCache\Event\CacheGroupsInvalidatedEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheHitEvent;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use PHPUnit\Framework\Attributes\After;
 use PHPUnit\Framework\Attributes\Before;
@@ -12,6 +14,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\ErrorHandler\ErrorHandler;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 final class OperationCacheIntegrationTest extends WebTestCase
@@ -132,6 +135,71 @@ final class OperationCacheIntegrationTest extends WebTestCase
         $this->getJson($client, '/api/cached-products/1');
         $this->getJson($client, '/api/cached-products/2');
         self::assertSame(7, CountingProductProvider::$calls);
+    }
+
+    public function testSuccessfulWriteMetadataInvalidatesInterpolatedGroup(): void
+    {
+        $client = $this->createCacheClient();
+        $events = [];
+        $dispatcher = self::getContainer()->get('event_dispatcher');
+        self::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
+        $dispatcher->addListener(
+            CacheGroupsInvalidatedEvent::class,
+            static function (CacheGroupsInvalidatedEvent $event) use (&$events): void {
+                $events[] = $event;
+            },
+        );
+
+        $this->getJson($client, '/api/cached-products/42');
+        $this->getJson($client, '/api/cached-products/42');
+        self::assertSame(1, CountingProductProvider::$calls);
+
+        $client->request(
+            'PATCH',
+            '/api/cached-products/42',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: '{}',
+        );
+        self::assertResponseStatusCodeSame(204);
+        self::assertCount(1, $events);
+        self::assertSame(['product:42'], $events[0]->groups);
+
+        $content = $this->getJson($client, '/api/cached-products/42');
+        self::assertStringContainsString('"value":"provider-call-2"', $content);
+    }
+
+    public function testUnsuccessfulWriteDoesNotInvalidate(): void
+    {
+        $client = $this->createCacheClient();
+        $this->getJson($client, '/api/cached-products/42');
+
+        $client->request(
+            'PATCH',
+            '/api/failed-cached-products/42',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: '{}',
+        );
+        self::assertResponseStatusCodeSame(422);
+
+        $this->getJson($client, '/api/cached-products/42');
+        self::assertSame(1, CountingProductProvider::$calls);
+    }
+
+    public function testSymfonyListenersReceiveLifecycleEventsFromApplicationDispatcher(): void
+    {
+        $client = $this->createCacheClient();
+        $hits = [];
+        $dispatcher = self::getContainer()->get('event_dispatcher');
+        self::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
+        $dispatcher->addListener(CacheHitEvent::class, static function (CacheHitEvent $event) use (&$hits): void {
+            $hits[] = $event;
+        });
+
+        $this->getJson($client, '/api/cached-products/42');
+        $this->getJson($client, '/api/cached-products/42');
+
+        self::assertCount(1, $hits);
+        self::assertSame('/api/cached-products/42', $hits[0]->request->getPathInfo());
     }
 
     public function testDifferentQueryStringsUseDifferentCacheEntries(): void

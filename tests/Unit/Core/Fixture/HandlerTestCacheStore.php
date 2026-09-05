@@ -19,6 +19,7 @@ final class HandlerTestCacheStore implements CacheStoreInterface
 
     public function __construct(
         private readonly ?CachedResponse $cached = null,
+        private readonly bool $throwOnPut = false,
     ) {
     }
 
@@ -34,6 +35,10 @@ final class HandlerTestCacheStore implements CacheStoreInterface
         CachedResponse $response,
         int $ttl,
     ): void {
+        if ($this->throwOnPut) {
+            throw new \RuntimeException('Cache write failed.');
+        }
+
         ++$this->putCalls;
 
         $this->lastCached = $response;

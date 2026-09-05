@@ -9,6 +9,10 @@ use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 
 final class GenerationTestCacheStore implements CacheStoreInterface
 {
+    public function __construct(private readonly bool $throwOnPutGeneration = false)
+    {
+    }
+
     /** @var array<string, string> */
     public array $generations = [];
 
@@ -38,6 +42,10 @@ final class GenerationTestCacheStore implements CacheStoreInterface
 
     public function putGeneration(string $key, string $generation): void
     {
+        if ($this->throwOnPutGeneration) {
+            throw new \RuntimeException('Generation write failed.');
+        }
+
         $this->generations[$key] = $generation;
     }
 }

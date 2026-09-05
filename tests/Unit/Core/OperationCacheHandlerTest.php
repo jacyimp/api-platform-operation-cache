@@ -16,6 +16,9 @@ use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheLookup;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
+use JacyImp\ApiPlatformOperationCache\Event\CacheHitEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheMissEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheStoredEvent;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerAnonymousAuthResolver;
@@ -23,8 +26,10 @@ use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerCountingCon
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerNeverCacheCondition;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerTestCacheStore;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerTestContainer;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -70,6 +75,7 @@ final class OperationCacheHandlerTest extends TestCase
     public function testItBypassesWhenConditionDoesNotMatch(): void
     {
         $condition = new HandlerNeverCacheCondition();
+        $dispatcher = new RecordingEventDispatcher();
 
         $store = new HandlerTestCacheStore();
         $handler = $this->handler(
@@ -77,6 +83,7 @@ final class OperationCacheHandlerTest extends TestCase
             [
                 HandlerNeverCacheCondition::class => $condition,
             ],
+            $dispatcher,
         );
 
         $operation = new Get(
@@ -96,16 +103,20 @@ final class OperationCacheHandlerTest extends TestCase
         self::assertFalse($lookup->isHit());
         self::assertFalse($lookup->shouldStore());
         self::assertSame(0, $store->getCalls);
+        self::assertSame([], $dispatcher->events);
     }
 
     public function testCacheMissReturnsStorageContext(): void
     {
         $store = new HandlerTestCacheStore();
-        $handler = $this->handler($store);
+        $dispatcher = new RecordingEventDispatcher();
+        $handler = $this->handler($store, eventDispatcher: $dispatcher);
+        $request = Request::create('/products?page=2');
+        $operation = $this->cachedOperation();
 
         $lookup = $handler->lookup(
-            $this->cachedOperation(),
-            Request::create('/products?page=2'),
+            $operation,
+            $request,
         );
 
         self::assertFalse($lookup->isHit());
@@ -115,6 +126,10 @@ final class OperationCacheHandlerTest extends TestCase
         self::assertSame(300, $lookup->context->cache->ttl);
         self::assertNotSame('', $lookup->context->key);
         self::assertSame(1, $store->getCalls);
+        self::assertCount(1, $dispatcher->events);
+        self::assertInstanceOf(CacheMissEvent::class, $dispatcher->events[0]);
+        self::assertSame($operation, $dispatcher->events[0]->operation);
+        self::assertSame($request, $dispatcher->events[0]->request);
     }
 
     public function testCacheHitReturnsRestoredResponse(): void
@@ -131,11 +146,14 @@ final class OperationCacheHandlerTest extends TestCase
             ),
         );
 
-        $handler = $this->handler($store);
+        $dispatcher = new RecordingEventDispatcher();
+        $handler = $this->handler($store, eventDispatcher: $dispatcher);
+        $request = Request::create('/products');
+        $operation = $this->cachedOperation();
 
         $lookup = $handler->lookup(
-            $this->cachedOperation(),
-            Request::create('/products'),
+            $operation,
+            $request,
         );
 
         self::assertTrue($lookup->isHit());
@@ -145,6 +163,11 @@ final class OperationCacheHandlerTest extends TestCase
             '{"cached":true}',
             $lookup->response->getContent(),
         );
+        self::assertCount(1, $dispatcher->events);
+        self::assertInstanceOf(CacheHitEvent::class, $dispatcher->events[0]);
+        self::assertSame($operation, $dispatcher->events[0]->operation);
+        self::assertSame($request, $dispatcher->events[0]->request);
+        self::assertSame($lookup->response, $dispatcher->events[0]->response);
         self::assertSame(
             'application/json',
             $lookup->response->headers->get('Content-Type'),
@@ -154,7 +177,16 @@ final class OperationCacheHandlerTest extends TestCase
     public function testItStoresCacheableResponseWithConfiguredTtl(): void
     {
         $store = new HandlerTestCacheStore();
-        $handler = $this->handler($store);
+        $dispatcher = new RecordingEventDispatcher();
+        $handler = $this->handler($store, eventDispatcher: $dispatcher);
+        $request = Request::create('/products');
+        $response = new Response(
+            '{"fresh":true}',
+            Response::HTTP_OK,
+            [
+                'Content-Type' => 'application/json',
+            ],
+        );
 
         $lookup = $handler->lookup(
             $this->cachedOperation(),
@@ -165,14 +197,8 @@ final class OperationCacheHandlerTest extends TestCase
 
         $handler->store(
             $lookup->context,
-            Request::create('/products'),
-            new Response(
-                '{"fresh":true}',
-                Response::HTTP_OK,
-                [
-                    'Content-Type' => 'application/json',
-                ],
-            ),
+            $request,
+            $response,
         );
 
         self::assertSame(1, $store->putCalls);
@@ -182,12 +208,19 @@ final class OperationCacheHandlerTest extends TestCase
             '{"fresh":true}',
             $store->lastCached->content,
         );
+        self::assertInstanceOf(CacheMissEvent::class, $dispatcher->events[0]);
+        self::assertInstanceOf(CacheStoredEvent::class, $dispatcher->events[1]);
+        self::assertSame(300, $dispatcher->events[1]->ttl);
+        self::assertSame($lookup->context->operation, $dispatcher->events[1]->operation);
+        self::assertSame($request, $dispatcher->events[1]->request);
+        self::assertSame($response, $dispatcher->events[1]->response);
     }
 
     public function testItDoesNotStoreUncacheableResponse(): void
     {
         $store = new HandlerTestCacheStore();
-        $handler = $this->handler($store);
+        $dispatcher = new RecordingEventDispatcher();
+        $handler = $this->handler($store, eventDispatcher: $dispatcher);
 
         $lookup = $handler->lookup(
             $this->cachedOperation(),
@@ -206,6 +239,27 @@ final class OperationCacheHandlerTest extends TestCase
         );
 
         self::assertSame(0, $store->putCalls);
+        self::assertCount(1, $dispatcher->events);
+        self::assertInstanceOf(CacheMissEvent::class, $dispatcher->events[0]);
+    }
+
+    public function testFailedCacheWriteDoesNotDispatchStoredEvent(): void
+    {
+        $dispatcher = new RecordingEventDispatcher();
+        $handler = $this->handler(
+            new HandlerTestCacheStore(throwOnPut: true),
+            eventDispatcher: $dispatcher,
+        );
+        $lookup = $handler->lookup($this->cachedOperation(), Request::create('/products'));
+        self::assertNotNull($lookup->context);
+
+        try {
+            $handler->store($lookup->context, Request::create('/products'), new Response('{}'));
+            self::fail('The cache write should fail.');
+        } catch (\RuntimeException) {
+            self::assertCount(1, $dispatcher->events);
+            self::assertInstanceOf(CacheMissEvent::class, $dispatcher->events[0]);
+        }
     }
 
     public function testConditionIsNotReevaluatedWhenResponseIsStored(): void
@@ -266,6 +320,7 @@ final class OperationCacheHandlerTest extends TestCase
     private function handler(
         HandlerTestCacheStore $store,
         array $services = [],
+        EventDispatcherInterface $eventDispatcher = new RecordingEventDispatcher(),
     ): OperationCacheHandler {
         $registry = new CacheStrategyRegistry(
             new HandlerTestContainer($services),
@@ -286,6 +341,7 @@ final class OperationCacheHandlerTest extends TestCase
             ),
             cacheStore: $store,
             responseFactory: new CachedResponseFactory($registry),
+            eventDispatcher: $eventDispatcher,
         );
     }
 }

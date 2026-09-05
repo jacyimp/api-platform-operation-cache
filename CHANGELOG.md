@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 * Conditional and dynamic `OperationCacheInvalidation` metadata.
 * Imperative invalidation through `CacheInvalidatorInterface`.
 * Application default vary headers with `includeDefaultVary` opt-out.
+* Immutable PSR-14 lifecycle events for cache hits, misses, stores, and group invalidations.
 
 ### Changed
 

@@ -31,6 +31,7 @@ use JacyImp\ApiPlatformOperationCache\Symfony\EventListener\ApiPlatformOperation
 use JacyImp\ApiPlatformOperationCache\Symfony\SymfonyAuthIdentityResolver;
 use JacyImp\ApiPlatformOperationCache\Symfony\SymfonyCacheStore;
 use JacyImp\ApiPlatformOperationCache\Symfony\SymfonyCacheStrategyLocator;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Argument\TaggedIteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -282,6 +283,7 @@ final class ApiPlatformOperationCacheExtension extends Extension
             ->setArguments([
                 new Reference(CacheGroupNormalizer::class),
                 new Reference(CacheGroupGenerationManager::class),
+                new Reference(EventDispatcherInterface::class),
             ]);
 
         $container->setAlias(
@@ -316,6 +318,7 @@ final class ApiPlatformOperationCacheExtension extends Extension
                 new Reference(
                     CachedResponseFactory::class,
                 ),
+                new Reference(EventDispatcherInterface::class),
             ]);
     }
 

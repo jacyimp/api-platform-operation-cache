@@ -7,6 +7,7 @@ namespace JacyImp\ApiPlatformOperationCache\Laravel;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +27,7 @@ use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 final class LaravelServiceProvider extends ServiceProvider
 {
@@ -40,6 +42,17 @@ final class LaravelServiceProvider extends ServiceProvider
         );
 
         $this->registerApiPlatformMiddleware();
+
+        $this->app->singleton(
+            LaravelEventDispatcher::class,
+            static fn (Application $app): LaravelEventDispatcher => new LaravelEventDispatcher(
+                $app->make(Dispatcher::class),
+            ),
+        );
+        $this->app->alias(
+            LaravelEventDispatcher::class,
+            EventDispatcherInterface::class,
+        );
 
         $this->app->singleton(
             OperationCacheMetadataExtractor::class,
@@ -168,6 +181,7 @@ final class LaravelServiceProvider extends ServiceProvider
                 responseFactory: $app->make(
                     CachedResponseFactory::class,
                 ),
+                eventDispatcher: $app->make(EventDispatcherInterface::class),
             ),);
         $this->app->singleton(
             CacheGroupGenerationManager::class,
@@ -180,6 +194,7 @@ final class LaravelServiceProvider extends ServiceProvider
             static fn (Application $app): CacheInvalidator => new CacheInvalidator(
                 $app->make(CacheGroupNormalizer::class),
                 $app->make(CacheGroupGenerationManager::class),
+                $app->make(EventDispatcherInterface::class),
             ),
         );
         $this->app->alias(CacheInvalidator::class, CacheInvalidatorInterface::class,);

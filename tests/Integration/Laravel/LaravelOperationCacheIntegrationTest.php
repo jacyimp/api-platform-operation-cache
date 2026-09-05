@@ -6,15 +6,19 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel;
 
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Foundation\Application;
 use Illuminate\Routing\Router;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
+use JacyImp\ApiPlatformOperationCache\Event\CacheGroupsInvalidatedEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheHitEvent;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelServiceProvider;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel\Fixture\ApiPlatformOperationMiddleware;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel\Fixture\CountingEndpoint;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response;
 
 final class LaravelOperationCacheIntegrationTest extends TestCase
 {
@@ -119,6 +123,26 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             ->middleware(
                 ApiPlatformOperationCacheMiddleware::class,
             );
+
+        $router
+            ->patch(
+                '/cached-products/{id}',
+                static fn (): Response => new Response('', Response::HTTP_NO_CONTENT),
+            )
+            ->middleware([
+                ApiPlatformOperationMiddleware::class . ':write',
+                ApiPlatformOperationCacheMiddleware::class,
+            ]);
+
+        $router
+            ->patch(
+                '/failed-cached-products/{id}',
+                static fn (): Response => new Response('', Response::HTTP_UNPROCESSABLE_ENTITY),
+            )
+            ->middleware([
+                ApiPlatformOperationMiddleware::class . ':failed-write',
+                ApiPlatformOperationCacheMiddleware::class,
+            ]);
     }
 
     protected function setUp(): void
@@ -194,6 +218,42 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
         $invalidator->invalidateGroups(['*']);
         $this->assertEndpointValue('/cached-products/1', 'endpoint-call-6');
         $this->assertEndpointValue('/cached-products/2', 'endpoint-call-7');
+    }
+
+    #[Test]
+    public function successfulWriteMetadataInvalidatesAndUsesLaravelEventListeners(): void
+    {
+        $invalidations = [];
+        $hits = [];
+        $events = $this->application()->make(Dispatcher::class);
+        $events->listen(
+            CacheGroupsInvalidatedEvent::class,
+            static function (CacheGroupsInvalidatedEvent $event) use (&$invalidations): void {
+                $invalidations[] = $event;
+            },
+        );
+        $events->listen(CacheHitEvent::class, static function (CacheHitEvent $event) use (&$hits): void {
+            $hits[] = $event;
+        });
+
+        $this->assertEndpointValue('/cached-products/42', 'endpoint-call-1');
+        $this->assertEndpointValue('/cached-products/42', 'endpoint-call-1');
+        self::assertCount(1, $hits);
+
+        $this->patchJson('/cached-products/42')->assertNoContent();
+        self::assertCount(1, $invalidations);
+        self::assertSame(['product:42'], $invalidations[0]->groups);
+
+        $this->assertEndpointValue('/cached-products/42', 'endpoint-call-2');
+    }
+
+    #[Test]
+    public function unsuccessfulWriteMetadataDoesNotInvalidate(): void
+    {
+        $this->assertEndpointValue('/cached-products/42', 'endpoint-call-1');
+        $this->patchJson('/failed-cached-products/42')->assertUnprocessable();
+        $this->assertEndpointValue('/cached-products/42', 'endpoint-call-1');
+        self::assertSame(1, CountingEndpoint::$calls);
     }
 
     #[Test]

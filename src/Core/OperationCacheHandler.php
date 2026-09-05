@@ -7,7 +7,11 @@ namespace JacyImp\ApiPlatformOperationCache\Core;
 use ApiPlatform\Metadata\HttpOperation;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
+use JacyImp\ApiPlatformOperationCache\Event\CacheHitEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheMissEvent;
+use JacyImp\ApiPlatformOperationCache\Event\CacheStoredEvent;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,6 +26,7 @@ final readonly class OperationCacheHandler
         private CacheKeyGenerator $keyGenerator,
         private CacheStoreInterface $cacheStore,
         private CachedResponseFactory $responseFactory,
+        private EventDispatcherInterface $eventDispatcher = new NullEventDispatcher(),
     ) {
     }
 
@@ -50,6 +55,7 @@ final readonly class OperationCacheHandler
         }
 
         $context = new OperationCacheContext(
+            operation: $operation,
             cache: $cache,
             key: $key,
         );
@@ -57,16 +63,19 @@ final readonly class OperationCacheHandler
         $cached = $this->cacheStore->get($key);
 
         if ($cached === null) {
+            $this->eventDispatcher->dispatch(new CacheMissEvent($operation, $request));
+
             return OperationCacheLookup::miss($context);
         }
 
-        return OperationCacheLookup::hit(
-            $this->responseFactory->restore(
-                $cached,
-                $request,
-                $cache,
-            ),
+        $response = $this->responseFactory->restore(
+            $cached,
+            $request,
+            $cache,
         );
+        $this->eventDispatcher->dispatch(new CacheHitEvent($operation, $request, $response));
+
+        return OperationCacheLookup::hit($response);
     }
 
     public function store(
@@ -89,5 +98,12 @@ final readonly class OperationCacheHandler
             $cached,
             $context->cache->ttl,
         );
+
+        $this->eventDispatcher->dispatch(new CacheStoredEvent(
+            $context->operation,
+            $request,
+            $response,
+            $context->cache->ttl,
+        ));
     }
 }

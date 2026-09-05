@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel\Fixture;
 
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Patch;
 use Closure;
 use Illuminate\Http\Request;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCacheInvalidation;
 use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -75,6 +77,21 @@ final class ApiPlatformOperationMiddleware
 
             default => new OperationCache(ttl: 300, groups: ['product:{id}'],),
         };
+
+        if ($scenario === 'write' || $scenario === 'failed-write') {
+            $request->attributes->set(
+                '_api_operation',
+                new Patch(
+                    name: 'write_product_' . $scenario,
+                    uriTemplate: '/cached-products/{id}',
+                    extraProperties: [
+                        new OperationCacheInvalidation(group: 'product:{id}'),
+                    ],
+                ),
+            );
+
+            return $next($request);
+        }
 
         $request->attributes->set(
             '_api_operation',

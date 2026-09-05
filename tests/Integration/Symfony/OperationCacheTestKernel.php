@@ -9,6 +9,7 @@ use JacyImp\ApiPlatformOperationCache\Symfony\ApiPlatformOperationCacheBundle;
 use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\NeverCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\ProductWriteProcessor;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\RequestHeaderAuthIdentityResolver;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\TenantVaryResolver;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
@@ -72,6 +73,7 @@ final class OperationCacheTestKernel extends Kernel
             [
                 CountingProductProvider::class,
                 NeverCacheCondition::class,
+                ProductWriteProcessor::class,
                 RequestHeaderAuthIdentityResolver::class,
                 TenantVaryResolver::class,
                 ResponseBehaviorMutator::class,

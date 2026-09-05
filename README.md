@@ -145,6 +145,7 @@ Each authenticated identity gets separate entries; anonymous requests share an a
 | Exclude request IDs or trace headers | [Response headers](docs/response-handling.md#excluding-response-headers) |
 | Modify the stored response or add headers on cache hits | [Response mutators](docs/response-handling.md#response-mutation) |
 | Inspect cache keys, exclusions, and option defaults | [Cache behavior and options](docs/cache-behavior.md) |
+| Observe hits, misses, stores, and invalidations | [PSR-14 lifecycle events](docs/events.md) |
 
 Only successful `GET`/`HEAD` responses are stored. Streams, binary files, and responses with `no-store`, `Set-Cookie`, or `Vary: *` are skipped.
 

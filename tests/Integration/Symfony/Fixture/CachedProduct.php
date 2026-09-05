@@ -7,7 +7,9 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\Patch;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCacheInvalidation;
 use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
 
 #[ApiResource(
@@ -17,6 +19,28 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             provider: CountingProductProvider::class,
             extraProperties: [
                 new OperationCache(ttl: 300, groups: ['product:{id}'],),
+            ],
+        ),
+        new Patch(
+            uriTemplate: '/cached-products/{id}',
+            status: 204,
+            read: false,
+            deserialize: false,
+            output: false,
+            processor: ProductWriteProcessor::class,
+            extraProperties: [
+                new OperationCacheInvalidation(group: 'product:{id}'),
+            ],
+        ),
+        new Patch(
+            uriTemplate: '/failed-cached-products/{id}',
+            status: 422,
+            read: false,
+            deserialize: false,
+            output: false,
+            processor: ProductWriteProcessor::class,
+            extraProperties: [
+                new OperationCacheInvalidation(group: 'product:{id}'),
             ],
         ),
         new Get(

@@ -25,6 +25,7 @@
     "php": "^8.2",
     "api-platform/metadata": "^3.4 || ^4.0",
     "psr/cache": "^3.0",
+    "psr/event-dispatcher": "^1.0",
     "symfony/config": "^6.4 || ^7.0 || ^8.0",
     "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
     "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
