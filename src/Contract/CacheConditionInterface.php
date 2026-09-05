@@ -6,7 +6,7 @@ namespace JacyImp\ApiPlatformOperationCache\Contract;
 
 use Symfony\Component\HttpFoundation\Request;
 
-interface VaryResolverInterface
+interface CacheConditionInterface
 {
-    public function resolve(Request $request): string;
+    public function matches(Request $request): bool;
 }
