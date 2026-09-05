@@ -90,7 +90,6 @@ final class CachedResponseFactoryTest extends TestCase
             headers: [
                 'Age' => '10',
                 'Date' => 'Sat, 05 Sep 2026 12:00:00 GMT',
-                'Set-Cookie' => 'session=abc',
                 'X-Keep-Me' => 'yes',
             ],
         );
@@ -103,7 +102,6 @@ final class CachedResponseFactoryTest extends TestCase
 
         self::assertArrayNotHasKey('age', $cached->headers);
         self::assertArrayNotHasKey('date', $cached->headers);
-        self::assertArrayNotHasKey('set-cookie', $cached->headers);
         self::assertSame(
             ['yes'],
             $cached->headers['x-keep-me'],
@@ -136,6 +134,53 @@ final class CachedResponseFactoryTest extends TestCase
         self::assertSame(
             ['yes'],
             $cached->headers['x-keep-me'],
+        );
+    }
+
+    public function testSetCookieIsAlwaysExcluded(): void
+    {
+        $response = new Response(
+            content: '{}',
+            headers: [
+                'Set-Cookie' => 'session=abc',
+            ],
+        );
+
+        $cached = $this->factory()->capture(
+            $response,
+            Request::create('/'),
+            new OperationCache(
+                ttl: 300,
+                excludeDefaultResponseHeaders: false,
+            ),
+        );
+
+        self::assertArrayNotHasKey(
+            'set-cookie',
+            $cached->headers,
+        );
+    }
+
+    public function testMutatorCannotPersistSetCookie(): void
+    {
+        $factory = $this->factory([
+            CookieAddingResponseMutator::class
+            => new CookieAddingResponseMutator(),
+        ]);
+
+        $cached = $factory->capture(
+            new Response('{}'),
+            Request::create('/'),
+            new OperationCache(
+                ttl: 300,
+                excludeDefaultResponseHeaders: false,
+                responseMutator: CookieAddingResponseMutator::class,
+            ),
+        );
+
+        self::assertArrayNotHasKey(
+            'set-cookie',
+            $cached->headers,
         );
     }
 
@@ -184,6 +229,7 @@ final class CachedResponseFactoryTest extends TestCase
                 'Connection' => 'keep-alive',
                 'Content-Length' => '2',
                 'Transfer-Encoding' => 'chunked',
+                'Set-Cookie' => 'session=abc',
             ],
         );
 
@@ -206,6 +252,10 @@ final class CachedResponseFactoryTest extends TestCase
         );
         self::assertArrayNotHasKey(
             'transfer-encoding',
+            $cached->headers,
+        );
+        self::assertArrayNotHasKey(
+            'set-cookie',
             $cached->headers,
         );
     }
@@ -252,7 +302,8 @@ final class CachedResponseFactoryTest extends TestCase
         );
 
         $factory = $this->factory([
-            TestResponseMutator::class => new TestResponseMutator(),
+            TestResponseMutator::class
+            => new TestResponseMutator(),
         ]);
 
         $cached = $factory->capture(
@@ -289,7 +340,8 @@ final class CachedResponseFactoryTest extends TestCase
     public function testWhenServingCachedResponseCanMutateRestoredResponse(): void
     {
         $factory = $this->factory([
-            TestResponseMutator::class => new TestResponseMutator(),
+            TestResponseMutator::class
+            => new TestResponseMutator(),
         ]);
 
         $response = $factory->restore(
@@ -408,8 +460,33 @@ final class TestResponseMutator implements ResponseMutatorInterface
         Request $request,
     ): Response {
         $response->setContent('served');
-        $response->headers->set('X-Cache-Hit', 'yes');
+        $response->headers->set(
+            'X-Cache-Hit',
+            'yes',
+        );
 
+        return $response;
+    }
+}
+
+final class CookieAddingResponseMutator implements ResponseMutatorInterface
+{
+    public function whenCaching(
+        Response $response,
+        Request $request,
+    ): Response {
+        $response->headers->set(
+            'Set-Cookie',
+            'session=abc',
+        );
+
+        return $response;
+    }
+
+    public function whenServingCachedResponse(
+        Response $response,
+        Request $request,
+    ): Response {
         return $response;
     }
 }

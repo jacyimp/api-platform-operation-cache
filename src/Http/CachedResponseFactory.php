@@ -14,8 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class CachedResponseFactory
 {
     /**
-     * These are never persisted. They are transport-specific or may become
-     * invalid when a cached response is reconstructed or mutated.
+     * These are never persisted.
      *
      * @var list<string>
      */
@@ -25,6 +24,7 @@ final readonly class CachedResponseFactory
         'keep-alive',
         'proxy-authenticate',
         'proxy-authorization',
+        'set-cookie',
         'te',
         'trailer',
         'transfer-encoding',
@@ -39,7 +39,6 @@ final readonly class CachedResponseFactory
     private const DEFAULT_EXCLUDED_HEADERS = [
         'age',
         'date',
-        'set-cookie',
     ];
 
     public function __construct(
