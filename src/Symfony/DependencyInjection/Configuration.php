@@ -22,18 +22,20 @@ final class Configuration implements ConfigurationInterface
 
         $rootNode = $this->asArrayNode($treeBuilder->getRootNode());
 
-        $rootNode
-            ->children()
+        $children = $rootNode->children();
+
+        $children
             ->scalarNode('cache_pool')
             ->cannotBeEmpty()
-            ->defaultValue('cache.app')
-            ->end()
-            ->arrayNode('vary_by_headers')
+            ->defaultValue('cache.app');
+
+        $varyByHeaders = $children->arrayNode('vary_by_headers');
+
+        $varyByHeaders
             ->scalarPrototype()
-            ->cannotBeEmpty()
-            ->end()
-            ->defaultValue([])
-            ->end();
+            ->cannotBeEmpty();
+
+        $varyByHeaders->defaultValue([]);
 
         return $treeBuilder;
     }

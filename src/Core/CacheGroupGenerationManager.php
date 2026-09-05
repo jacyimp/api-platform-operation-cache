@@ -71,7 +71,13 @@ final readonly class CacheGroupGenerationManager
     {
         $this->cacheStore->putGeneration(
             $this->key($target),
-            bin2hex(random_bytes(16)),
+            sprintf(
+                '%08x%08x%08x%08x',
+                random_int(0, 0x7fffffff),
+                random_int(0, 0x7fffffff),
+                random_int(0, 0x7fffffff),
+                random_int(0, 0x7fffffff),
+            ),
         );
     }
 
