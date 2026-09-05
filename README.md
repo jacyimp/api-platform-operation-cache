@@ -7,6 +7,37 @@
 
 Cache individual API Platform Get/GetCollection HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.
 
+## Cache Product detail and collection responses
+
+For an existing `Product` resource, add `OperationCache` to the read operations you want to cache. Keep your existing fields, persistence mapping, and other operations.
+
+```php
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+
+#[ApiResource(operations: [
+    new Get(extraProperties: [
+        OperationCache::class => new OperationCache(ttl: 300),
+    ]),
+    new GetCollection(extraProperties: [
+        OperationCache::class => new OperationCache(ttl: 60),
+    ]),
+    // Keep your existing write and custom operations here.
+])]
+final class Product
+{
+    // Your resource fields...
+}
+```
+
+The first cacheable response is stored; matching requests reuse it until expiry. `ttl` is required, in seconds, and must be greater than zero.
+
+With the default resource routes, `/products/42` is cached for five minutes and `/products` for one minute. Query parameters are part of the cache key, so collection pages and filters get separate entries automatically.
+
+If expiry is enough for your data, this is all the operation metadata you need. For user-specific content, [separate entries by authenticated identity](#cache-user-specific-responses).
+
 ## Install
 
 ```bash
@@ -44,49 +75,50 @@ Composer package discovery registers the provider, which adds the cache middlewa
 
 [Choose another cache store →](docs/laravel.md)
 
-## Cache an operation
+## Refresh Product caches after writes
+
+When changes should appear before the TTL expires, assign groups to your cached reads and invalidate them on successful writes. This example uses `products` for collection responses and `product:{id}` for each detail response:
 
 ```php
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Post;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCacheInvalidation;
 
 #[ApiResource(operations: [
     new Get(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 300),
+        OperationCache::class => new OperationCache(ttl: 300, groups: ['product:{id}']),
     ]),
     new GetCollection(extraProperties: [
-        OperationCache::class => new OperationCache(ttl: 60),
+        OperationCache::class => new OperationCache(ttl: 60, groups: ['products']),
+    ]),
+    new Post(extraProperties: [
+        new OperationCacheInvalidation(group: 'products'),
+    ]),
+    new Patch(extraProperties: [
+        new OperationCacheInvalidation(group: 'product:{id}'),
+        new OperationCacheInvalidation(group: 'products'),
+    ]),
+    new Delete(extraProperties: [
+        new OperationCacheInvalidation(group: 'product:{id}'),
+        new OperationCacheInvalidation(group: 'products'),
     ]),
 ])]
 final class Product
 {
-    // Your resource fields...
+    // Your existing resource fields and persistence mapping...
 }
 ```
 
-The first cacheable response is stored; matching requests reuse it until expiry. `ttl` is required, in seconds, and must be greater than zero.
+Creating a product invalidates cached collections, including their pages and filters. Updating or deleting a product also invalidates its detail response. Failed operations do not invalidate caches. The next matching read rebuilds the response.
 
-## Cache groups and invalidation
+`{id}` comes from the operation's URI variables; use your own variable name if it differs. If your resource exposes `Put`, add the same invalidation rules as `Patch`. Add these rules to custom write operations too, such as a publish action. Writes outside these operations need explicit invalidation.
 
-```php
-new OperationCache(ttl: 300, groups: ['product:{id}'])
-```
-
-Declare one or more rules on the custom operation that changes the data:
-
-```php
-new Post(
-    uriTemplate: '/products/{id}/publish',
-    extraProperties: [
-        new OperationCacheInvalidation(group: 'product:{id}'),
-        new OperationCacheInvalidation(group: 'products'),
-    ],
-)
-```
-
-Invalidation runs after success and supports exact groups, prefix namespaces such as `product:*`, and global `*`. It changes generation records without scanning cached responses. [Advanced groups and invalidation →](docs/cache-groups.md)
+[Advanced groups, conditional invalidation, and invalidating from application code](docs/cache-groups.md)
 
 ## Separate responses by language or currency
 
