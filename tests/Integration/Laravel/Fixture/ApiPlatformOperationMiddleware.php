@@ -18,16 +18,43 @@ final class ApiPlatformOperationMiddleware
     public function handle(
         Request $request,
         Closure $next,
+        string $scenario = 'plain',
     ): Response {
+        $cache = match ($scenario) {
+            'condition' => new OperationCache(
+                ttl: 300,
+                when: NeverCacheCondition::class,
+            ),
+
+            'header' => new OperationCache(
+                ttl: 300,
+                varyByHeaders: [
+                    'Accept-Language',
+                ],
+            ),
+
+            'auth' => new OperationCache(
+                ttl: 300,
+                varyByAuth: RequestHeaderAuthIdentityResolver::class,
+            ),
+
+            'resolver' => new OperationCache(
+                ttl: 300,
+                varyByResolver: TenantVaryResolver::class,
+            ),
+
+            default => new OperationCache(
+                ttl: 300,
+            ),
+        };
+
         $request->attributes->set(
             '_api_operation',
             new Get(
-                name: 'cached_product',
+                name: 'cached_product_' . $scenario,
                 uriTemplate: '/cached-products/{id}',
                 extraProperties: [
-                    OperationCache::class => new OperationCache(
-                        ttl: 300,
-                    ),
+                    OperationCache::class => $cache,
                 ],
             ),
         );

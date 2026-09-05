@@ -55,15 +55,35 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     protected function defineRoutes(
         mixed $router,
     ): void {
-        $router
-            ->get(
-                '/cached-products/{id}',
-                CountingEndpoint::class,
-            )
-            ->middleware([
-                ApiPlatformOperationMiddleware::class,
-                ApiPlatformOperationCacheMiddleware::class,
-            ]);
+        $this->cachedRoute(
+            $router,
+            '/cached-products/{id}',
+            'plain',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/conditionally-uncached-products/{id}',
+            'condition',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/header-vary-products/{id}',
+            'header',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/auth-vary-products/{id}',
+            'auth',
+        );
+
+        $this->cachedRoute(
+            $router,
+            '/resolver-vary-products/{id}',
+            'resolver',
+        );
 
         $router
             ->get(
@@ -90,32 +110,15 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     #[Test]
     public function secondIdenticalRequestSkipsApplicationHandling(): void
     {
-        $first = $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42',
+            'endpoint-call-1',
         );
 
-        $first
-            ->assertOk()
-            ->assertJson([
-                'id' => '42',
-                'value' => 'endpoint-call-1',
-            ]);
-
-        self::assertSame(
-            1,
-            CountingEndpoint::$calls,
-        );
-
-        $second = $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42',
+            'endpoint-call-1',
         );
-
-        $second
-            ->assertOk()
-            ->assertJson([
-                'id' => '42',
-                'value' => 'endpoint-call-1',
-            ]);
 
         self::assertSame(
             1,
@@ -126,29 +129,20 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     #[Test]
     public function differentUrisUseDifferentCacheEntries(): void
     {
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-1',
-            ]);
+            'endpoint-call-1',
+        );
 
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/43',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-2',
-            ]);
+            'endpoint-call-2',
+        );
 
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-1',
-            ]);
+            'endpoint-call-1',
+        );
 
         self::assertSame(
             2,
@@ -159,29 +153,138 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     #[Test]
     public function differentQueryStringsUseDifferentCacheEntries(): void
     {
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42?view=summary',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-1',
-            ]);
+            'endpoint-call-1',
+        );
 
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42?view=detail',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-2',
-            ]);
+            'endpoint-call-2',
+        );
 
-        $this->getJson(
+        $this->assertEndpointValue(
             '/cached-products/42?view=summary',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-1',
-            ]);
+            'endpoint-call-1',
+        );
+
+        self::assertSame(
+            2,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function falseConditionBypassesCache(): void
+    {
+        $this->assertEndpointValue(
+            '/conditionally-uncached-products/42',
+            'endpoint-call-1',
+        );
+
+        $this->assertEndpointValue(
+            '/conditionally-uncached-products/42',
+            'endpoint-call-2',
+        );
+
+        self::assertSame(
+            2,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function varyByHeaderCreatesIndependentCacheEntries(): void
+    {
+        $this->assertEndpointValue(
+            '/header-vary-products/42',
+            'endpoint-call-1',
+            [
+                'Accept-Language' => 'en',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/header-vary-products/42',
+            'endpoint-call-2',
+            [
+                'Accept-Language' => 'fr',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/header-vary-products/42',
+            'endpoint-call-1',
+            [
+                'Accept-Language' => 'en',
+            ],
+        );
+
+        self::assertSame(
+            2,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function varyByAuthCreatesIndependentCacheEntries(): void
+    {
+        $this->assertEndpointValue(
+            '/auth-vary-products/42',
+            'endpoint-call-1',
+            [
+                'X-User' => 'alice',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/auth-vary-products/42',
+            'endpoint-call-2',
+            [
+                'X-User' => 'bob',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/auth-vary-products/42',
+            'endpoint-call-1',
+            [
+                'X-User' => 'alice',
+            ],
+        );
+
+        self::assertSame(
+            2,
+            CountingEndpoint::$calls,
+        );
+    }
+
+    #[Test]
+    public function customVaryResolverCreatesIndependentCacheEntries(): void
+    {
+        $this->assertEndpointValue(
+            '/resolver-vary-products/42',
+            'endpoint-call-1',
+            [
+                'X-Tenant' => 'tenant-a',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/resolver-vary-products/42',
+            'endpoint-call-2',
+            [
+                'X-Tenant' => 'tenant-b',
+            ],
+        );
+
+        $this->assertEndpointValue(
+            '/resolver-vary-products/42',
+            'endpoint-call-1',
+            [
+                'X-Tenant' => 'tenant-a',
+            ],
+        );
 
         self::assertSame(
             2,
@@ -192,21 +295,15 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     #[Test]
     public function ordinaryLaravelRequestsAreIgnored(): void
     {
-        $this->getJson(
+        $this->assertEndpointValue(
             '/ordinary/42',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-1',
-            ]);
+            'endpoint-call-1',
+        );
 
-        $this->getJson(
+        $this->assertEndpointValue(
             '/ordinary/42',
-        )
-            ->assertOk()
-            ->assertJson([
-                'value' => 'endpoint-call-2',
-            ]);
+            'endpoint-call-2',
+        );
 
         self::assertSame(
             2,
@@ -230,6 +327,43 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             LaravelServiceProvider::MIDDLEWARE,
             $middleware,
         );
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
+    private function assertEndpointValue(
+        string $uri,
+        string $value,
+        array $headers = [],
+    ): void {
+        $this
+            ->getJson(
+                $uri,
+                $headers,
+            )
+            ->assertOk()
+            ->assertJson([
+                'value' => $value,
+            ]);
+    }
+
+    private function cachedRoute(
+        mixed $router,
+        string $uri,
+        string $scenario,
+    ): void {
+        $router
+            ->get(
+                $uri,
+                CountingEndpoint::class,
+            )
+            ->middleware([
+                ApiPlatformOperationMiddleware::class
+                . ':'
+                . $scenario,
+                ApiPlatformOperationCacheMiddleware::class,
+            ]);
     }
 
     private function application(): Application
