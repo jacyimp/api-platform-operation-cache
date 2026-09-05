@@ -120,7 +120,9 @@ final class LaravelCacheStrategyLocatorTest extends TestCase
 
     public function testInvalidCacheStrategyExceptionMessages(): void
     {
+        // phpcs:ignore Generic.Files.LineLength.TooLong
         self::assertSame('Cache strategy "unknown" is not registered.', InvalidCacheStrategyException::notFound('unknown')->getMessage(),);
+        // phpcs:ignore Generic.Files.LineLength.TooLong
         self::assertSame('Cache strategy "service" must implement ExpectedType.', InvalidCacheStrategyException::invalidType('service', 'ExpectedType',)->getMessage(),);
     }
 }
