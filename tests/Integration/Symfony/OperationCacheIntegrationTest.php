@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
-use Psr\Cache\CacheItemPoolInterface;
 use PHPUnit\Framework\Attributes\After;
 use PHPUnit\Framework\Attributes\Before;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\ErrorHandler\ErrorHandler;
@@ -26,9 +26,11 @@ final class OperationCacheIntegrationTest extends WebTestCase
     #[After]
     protected function restoreExceptionHandlerStack(): void
     {
-        if (!$this->symfonyErrorHandlerWasRegistered && self::isSymfonyErrorHandlerRegistered()) {
-            restore_exception_handler();
+        if ($this->symfonyErrorHandlerWasRegistered || !self::isSymfonyErrorHandlerRegistered()) {
+            return;
         }
+
+        restore_exception_handler();
     }
 
     public function testSecondIdenticalRequestSkipsStateProvider(): void
