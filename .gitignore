@@ -5,3 +5,4 @@ var
 composer.lock
 .phpunit.cache
 config/reference.php
+coverage.xml
