@@ -15,14 +15,8 @@ return [
 ];
 ```
 
-API Platform must use its Symfony listener integration:
-
-```yaml
-# config/packages/api_platform.yaml
-
-api_platform:
-    use_symfony_listeners: true
-```
+The bundle registers its own Symfony HttpKernel listeners, so it does not
+require API Platform's `use_symfony_listeners` option.
 
 The package uses `cache.app` by default.
 

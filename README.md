@@ -59,15 +59,9 @@ return [
 ];
 ```
 
-Enable API Platform's Symfony listeners:
-
-```yaml
-# config/packages/api_platform.yaml
-api_platform:
-    use_symfony_listeners: true
-```
-
-Uses `cache.app` by default. [Choose a cache pool or configure services →](docs/symfony.md)
+The bundle registers its own Symfony HttpKernel listeners and does not require
+API Platform's `use_symfony_listeners` option. It uses `cache.app` by default.
+[Choose a cache pool or configure services →](docs/symfony.md)
 
 ### Laravel
 

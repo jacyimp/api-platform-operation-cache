@@ -34,9 +34,15 @@ final class OperationCacheIntegrationTest extends WebTestCase
         restore_exception_handler();
     }
 
-    public function testSecondIdenticalRequestSkipsStateProvider(): void
+    public function testDefaultApiPlatformConfigurationCachesAndSkipsStateProvider(): void
     {
         $client = $this->createCacheClient();
+
+        self::assertFalse(
+            self::getContainer()->getParameter(
+                'api_platform.use_symfony_listeners',
+            ),
+        );
 
         $first = $this->getJson(
             $client,

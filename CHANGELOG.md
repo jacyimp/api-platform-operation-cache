@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 * Imperative invalidation through `CacheInvalidatorInterface`.
 * Application default vary headers with `includeDefaultVary` opt-out.
 
+### Changed
+
+* Symfony integration no longer requires API Platform's `use_symfony_listeners` option.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added

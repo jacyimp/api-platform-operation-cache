@@ -48,7 +48,6 @@ final class OperationCacheTestKernel extends Kernel
         $container->extension(
             'api_platform',
             [
-                'use_symfony_listeners' => true,
                 'mapping' => [
                     'paths' => [
                         __DIR__ . '/Fixture',
