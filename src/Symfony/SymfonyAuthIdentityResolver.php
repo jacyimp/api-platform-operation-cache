@@ -5,23 +5,38 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Symfony;
 
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use Symfony\Bundle\SecurityBundle\Security;
+use JacyImp\ApiPlatformOperationCache\Exception\AuthIdentityResolutionException;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
+/**
+ * @internal
+ */
 final readonly class SymfonyAuthIdentityResolver implements AuthIdentityResolverInterface
 {
     public function __construct(
-        private Security $security,
+        private TokenStorageInterface $tokenStorage,
     ) {
     }
 
     public function resolve(): ?string
     {
-        $user = $this->security->getUser();
+        $user = $this->tokenStorage
+            ->getToken()
+            ?->getUser();
 
-        if ($user === null) {
+        if (!$user instanceof UserInterface) {
             return null;
         }
 
-        return $user->getUserIdentifier();
+        $identifier = trim($user->getUserIdentifier());
+
+        if ($identifier === '') {
+            throw new AuthIdentityResolutionException(
+                'Authenticated user identifier cannot be empty.',
+            );
+        }
+
+        return $identifier;
     }
 }

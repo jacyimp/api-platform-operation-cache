@@ -14,8 +14,9 @@ final class VaryByAuthTest extends TestCase
 {
     public function testItIsAVaryDefinition(): void
     {
-        $vary = new VaryByAuth();
-
-        self::assertInstanceOf(VaryBy::class, $vary);
+        self::assertInstanceOf(
+            VaryBy::class,
+            new VaryByAuth(),
+        );
     }
 }

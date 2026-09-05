@@ -7,9 +7,9 @@
     "api-platform",
     "cache",
     "caching",
+    "laravel",
     "response-cache",
-    "symfony",
-    "laravel"
+    "symfony"
   ],
   "homepage": "https://github.com/jacyimp/api-platform-operation-cache",
   "support": {
@@ -31,6 +31,8 @@
     "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0"
   },
   "require-dev": {
+    "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+    "illuminate/http": "^11.0 || ^12.0 || ^13.0",
     "illuminate/support": "^11.0 || ^12.0 || ^13.0",
     "phpstan/phpstan": "^2.2.13",
     "phpstan/phpstan-deprecation-rules": "^2.0",
@@ -39,10 +41,12 @@
     "phpunit/phpunit": "^11.5",
     "slevomat/coding-standard": "^8.31",
     "squizlabs/php_codesniffer": "^4.0.4",
-    "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0"
+    "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
+    "symfony/security-core": "^6.4 || ^7.0 || ^8.0"
   },
   "suggest": {
-    "api-platform/laravel": "Required when using the Laravel integration."
+    "api-platform/laravel": "Required when using the Laravel integration.",
+    "symfony/security-core": "Required when using VaryByAuth with Symfony."
   },
   "autoload": {
     "psr-4": {
