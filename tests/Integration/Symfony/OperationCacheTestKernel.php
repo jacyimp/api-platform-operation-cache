@@ -9,8 +9,7 @@ use JacyImp\ApiPlatformOperationCache\Symfony\ApiPlatformOperationCacheBundle;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
-use Symfony\Component\Config\Loader\LoaderInterface;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
@@ -25,53 +24,45 @@ final class OperationCacheTestKernel extends Kernel
         yield new ApiPlatformOperationCacheBundle();
     }
 
-    public function registerContainerConfiguration(
-        LoaderInterface $loader,
+    protected function configureContainer(
+        ContainerConfigurator $container,
     ): void {
-        $loader->load(
-            static function (
-                ContainerBuilder $container,
-            ): void {
-                $container->loadFromExtension(
-                    'framework',
-                    [
-                        'secret' => 'operation-cache-test',
-                        'test' => true,
-                        'router' => [
-                            'utf8' => true,
-                        ],
-                        'cache' => [
-                            'app' => 'cache.adapter.array',
-                        ],
-                    ],
-                );
-
-                $container->loadFromExtension(
-                    'api_platform',
-                    [
-                        'use_symfony_listeners' => true,
-                        'mapping' => [
-                            'paths' => [
-                                __DIR__ . '/Fixture',
-                            ],
-                        ],
-                        'formats' => [
-                            'json' => [
-                                'application/json',
-                            ],
-                        ],
-                    ],
-                );
-
-                $container
-                    ->register(
-                        CountingProductProvider::class,
-                        CountingProductProvider::class,
-                    )
-                    ->setAutowired(true)
-                    ->setAutoconfigured(true);
-            },
+        $container->extension(
+            'framework',
+            [
+                'secret' => 'operation-cache-test',
+                'test' => true,
+                'cache' => [
+                    'app' => 'cache.adapter.filesystem',
+                ],
+            ],
         );
+
+        $container->extension(
+            'api_platform',
+            [
+                'use_symfony_listeners' => true,
+                'mapping' => [
+                    'paths' => [
+                        __DIR__ . '/Fixture',
+                    ],
+                ],
+                'formats' => [
+                    'json' => [
+                        'application/json',
+                    ],
+                ],
+            ],
+        );
+
+        $container
+            ->services()
+            ->set(
+                CountingProductProvider::class,
+                CountingProductProvider::class,
+            )
+            ->autowire()
+            ->autoconfigure();
     }
 
     protected function configureRoutes(
@@ -92,14 +83,20 @@ final class OperationCacheTestKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return sys_get_temp_dir()
-            . '/api-platform-operation-cache/'
-            . $this->environment;
+        return sprintf(
+            '%s/api-platform-operation-cache/%d/%s',
+            sys_get_temp_dir(),
+            getmypid(),
+            $this->environment,
+        );
     }
 
     public function getLogDir(): string
     {
-        return sys_get_temp_dir()
-            . '/api-platform-operation-cache/log';
+        return sprintf(
+            '%s/api-platform-operation-cache/%d/log',
+            sys_get_temp_dir(),
+            getmypid(),
+        );
     }
 }

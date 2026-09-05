@@ -3,3 +3,5 @@ vendor
 var
 .phpcs.cache
 composer.lock
+.phpunit.cache
+config/reference.php
