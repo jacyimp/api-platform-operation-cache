@@ -8,20 +8,17 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request as LaravelRequest;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Exception\AuthIdentityResolutionException;
-use LogicException;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * @internal
  */
-final readonly class LaravelAuthIdentityResolver implements AuthIdentityResolverInterface
+final class LaravelAuthIdentityResolver implements AuthIdentityResolverInterface
 {
     public function resolve(Request $request): ?string
     {
         if (!$request instanceof LaravelRequest) {
-            throw new LogicException(
-                'Laravel auth identity resolution requires an Illuminate HTTP request.',
-            );
+            return null;
         }
 
         $user = $request->user();
