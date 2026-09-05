@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Http;
 
-use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Http\Fixture\CookieAddingResponseMutator;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Http\Fixture\ResponseTestContainer;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Http\Fixture\TestResponseMutator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -439,75 +440,5 @@ final class CachedResponseFactoryTest extends TestCase
                 new ResponseTestContainer($services),
             ),
         );
-    }
-}
-
-final class TestResponseMutator implements ResponseMutatorInterface
-{
-    public function whenCaching(
-        Response $response,
-        Request $request,
-    ): Response {
-        $response->setContent('cached');
-        $response->headers->remove('X-Original');
-        $response->headers->set('X-Cached', 'yes');
-
-        return $response;
-    }
-
-    public function whenServingCachedResponse(
-        Response $response,
-        Request $request,
-    ): Response {
-        $response->setContent('served');
-        $response->headers->set(
-            'X-Cache-Hit',
-            'yes',
-        );
-
-        return $response;
-    }
-}
-
-final class CookieAddingResponseMutator implements ResponseMutatorInterface
-{
-    public function whenCaching(
-        Response $response,
-        Request $request,
-    ): Response {
-        $response->headers->set(
-            'Set-Cookie',
-            'session=abc',
-        );
-
-        return $response;
-    }
-
-    public function whenServingCachedResponse(
-        Response $response,
-        Request $request,
-    ): Response {
-        return $response;
-    }
-}
-
-final readonly class ResponseTestContainer implements ContainerInterface
-{
-    /**
-     * @param array<string, object> $services
-     */
-    public function __construct(
-        private array $services,
-    ) {
-    }
-
-    public function get(string $id): object
-    {
-        return $this->services[$id];
-    }
-
-    public function has(string $id): bool
-    {
-        return isset($this->services[$id]);
     }
 }

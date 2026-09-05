@@ -8,15 +8,17 @@ use Illuminate\Support\ServiceProvider;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelServiceProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 #[CoversClass(LaravelServiceProvider::class)]
 final class LaravelServiceProviderTest extends TestCase
 {
     public function testItIsALaravelServiceProvider(): void
     {
-        self::assertTrue(is_subclass_of(
-            LaravelServiceProvider::class,
-            ServiceProvider::class,
-        ));
+        $parent = (new ReflectionClass(LaravelServiceProvider::class))
+            ->getParentClass();
+
+        self::assertInstanceOf(ReflectionClass::class, $parent);
+        self::assertSame(ServiceProvider::class, $parent->getName());
     }
 }

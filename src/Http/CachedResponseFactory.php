@@ -136,18 +136,26 @@ final readonly class CachedResponseFactory
         foreach ($cache->excludeResponseHeaders as $header) {
             $header = strtolower(trim($header));
 
-            if ($header !== '') {
-                $excluded[$header] = true;
+            if ($header === '') {
+                continue;
             }
+
+            $excluded[$header] = true;
         }
 
         foreach ($response->headers->all('connection') as $value) {
+            if ($value === null) {
+                continue;
+            }
+
             foreach (explode(',', $value) as $header) {
                 $header = strtolower(trim($header));
 
-                if ($header !== '') {
-                    $excluded[$header] = true;
+                if ($header === '') {
+                    continue;
                 }
+
+                $excluded[$header] = true;
             }
         }
 
@@ -160,7 +168,10 @@ final readonly class CachedResponseFactory
                 continue;
             }
 
-            $headers[$name] = $values;
+            $headers[$name] = array_values(array_filter(
+                $values,
+                static fn (?string $value): bool => $value !== null,
+            ));
         }
 
         ksort($headers);

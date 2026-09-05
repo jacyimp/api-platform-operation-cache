@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata;
 
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidOperationCacheException;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestAuthIdentityResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestResponseMutator;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestVaryResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 #[CoversClass(OperationCache::class)]
 final class OperationCacheTest extends TestCase
@@ -186,10 +184,10 @@ final class OperationCacheTest extends TestCase
             'Authentication vary resolver cannot be empty.',
         );
 
-        new OperationCache(
-            ttl: 300,
-            varyByAuth: ' ',
-        );
+        (new \ReflectionClass(OperationCache::class))->newInstanceArgs([
+            'ttl' => 300,
+            'varyByAuth' => ' ',
+        ]);
     }
 
     public function testItRejectsEmptyVaryResolver(): void
@@ -201,10 +199,10 @@ final class OperationCacheTest extends TestCase
             'Vary resolver cannot be empty.',
         );
 
-        new OperationCache(
-            ttl: 300,
-            varyByResolver: '',
-        );
+        (new \ReflectionClass(OperationCache::class))->newInstanceArgs([
+            'ttl' => 300,
+            'varyByResolver' => '',
+        ]);
     }
 
     public function testItRejectsEmptyCondition(): void
@@ -216,10 +214,10 @@ final class OperationCacheTest extends TestCase
             'Cache condition cannot be empty.',
         );
 
-        new OperationCache(
-            ttl: 300,
-            when: ' ',
-        );
+        (new \ReflectionClass(OperationCache::class))->newInstanceArgs([
+            'ttl' => 300,
+            'when' => ' ',
+        ]);
     }
 
     public function testItRejectsEmptyResponseMutator(): void
@@ -231,50 +229,9 @@ final class OperationCacheTest extends TestCase
             'Response mutator cannot be empty.',
         );
 
-        new OperationCache(
-            ttl: 300,
-            responseMutator: '',
-        );
-    }
-}
-
-final class TestVaryResolver implements VaryResolverInterface
-{
-    public function resolve(Request $request): string
-    {
-        return 'vary';
-    }
-}
-
-final class TestAuthIdentityResolver implements AuthIdentityResolverInterface
-{
-    public function resolve(Request $request): ?string
-    {
-        return 'user-42';
-    }
-}
-
-final class TestCacheCondition implements CacheConditionInterface
-{
-    public function matches(Request $request): bool
-    {
-        return true;
-    }
-}
-
-final class TestResponseMutator implements ResponseMutatorInterface
-{
-    public function whenCaching(
-        Response $response,
-        Request $request,
-    ): Response {
-        return $response;
-    }
-
-    public function whenServingCachedResponse(
-        Response $response,
-        Request $request,
-    ): Response {
-        return $response;
+        (new \ReflectionClass(OperationCache::class))->newInstanceArgs([
+            'ttl' => 300,
+            'responseMutator' => '',
+        ]);
     }
 }

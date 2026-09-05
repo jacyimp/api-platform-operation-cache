@@ -4,21 +4,17 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Metadata;
 
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidOperationCacheException;
 
 final readonly class OperationCache
 {
     /**
      * @param list<string> $varyByHeaders
-     * @param false|true|class-string<AuthIdentityResolverInterface> $varyByAuth
-     * @param class-string<VaryResolverInterface>|null $varyByResolver
-     * @param class-string<CacheConditionInterface>|null $when
+     * @param bool|class-string<\JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface> $varyByAuth
+     * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface>|null $varyByResolver
+     * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface>|null $when
      * @param list<string> $excludeResponseHeaders
-     * @param class-string<ResponseMutatorInterface>|null $responseMutator
+     * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface>|null $responseMutator
      */
     public function __construct(
         public int $ttl,

@@ -49,12 +49,14 @@ final readonly class ApiPlatformOperationCacheListener
             return;
         }
 
-        if ($lookup->context !== null) {
-            $request->attributes->set(
-                self::CONTEXT_ATTRIBUTE,
-                $lookup->context,
-            );
+        if ($lookup->context === null) {
+            return;
         }
+
+        $request->attributes->set(
+            self::CONTEXT_ATTRIBUTE,
+            $lookup->context,
+        );
     }
 
     public function onKernelResponse(ResponseEvent $event): void

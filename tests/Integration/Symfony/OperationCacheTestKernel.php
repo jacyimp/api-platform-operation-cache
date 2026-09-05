@@ -21,6 +21,9 @@ final class OperationCacheTestKernel extends Kernel
 {
     use MicroKernelTrait;
 
+    /**
+     * @return iterable<FrameworkBundle|ApiPlatformBundle|ApiPlatformOperationCacheBundle>
+     */
     public function registerBundles(): iterable
     {
         yield new FrameworkBundle();

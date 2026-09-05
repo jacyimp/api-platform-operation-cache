@@ -196,11 +196,13 @@ final class LaravelServiceProvider extends ServiceProvider
             ? $middleware
             : [$middleware];
 
-        if (!in_array(
-            self::MIDDLEWARE,
-            $middleware,
-            true,
-        )) {
+        if (
+            !in_array(
+                self::MIDDLEWARE,
+                $middleware,
+                true,
+            )
+        ) {
             $middleware[] = self::MIDDLEWARE;
         }
 

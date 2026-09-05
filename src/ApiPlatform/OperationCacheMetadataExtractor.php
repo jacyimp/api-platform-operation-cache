@@ -15,7 +15,7 @@ final class OperationCacheMetadataExtractor
 {
     public function extract(Operation $operation): ?OperationCache
     {
-        $extraProperties = $operation->getExtraProperties();
+        $extraProperties = $operation->getExtraProperties() ?? [];
 
         if (!array_key_exists(OperationCache::class, $extraProperties)) {
             return null;

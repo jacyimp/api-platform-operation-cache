@@ -7,6 +7,7 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Laravel;
 use Illuminate\Contracts\Foundation\Application;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidCacheStrategyException;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelCacheStrategyLocator;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Laravel\Fixture\LaravelLocatorTestStrategy;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -106,8 +107,4 @@ final class LaravelCacheStrategyLocatorTest extends TestCase
             'Unknown\\Cache\\Strategy',
         );
     }
-}
-
-final class LaravelLocatorTestStrategy
-{
 }

@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\EvaluatorCustomAuthResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\EvaluatorDefaultAuthResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\EvaluatorNeverCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\EvaluatorTenantVaryResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\EvaluatorTestContainer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 #[CoversClass(OperationCacheEvaluator::class)]
@@ -172,63 +173,5 @@ final class OperationCacheEvaluatorTest extends TestCase
                 new EvaluatorTestContainer($services),
             ),
         );
-    }
-}
-
-final readonly class EvaluatorDefaultAuthResolver implements AuthIdentityResolverInterface
-{
-    public function __construct(
-        private ?string $identity,
-    ) {
-    }
-
-    public function resolve(Request $request): ?string
-    {
-        return $this->identity;
-    }
-}
-
-final class EvaluatorCustomAuthResolver implements AuthIdentityResolverInterface
-{
-    public function resolve(Request $request): ?string
-    {
-        return 'custom-user';
-    }
-}
-
-final class EvaluatorTenantVaryResolver implements VaryResolverInterface
-{
-    public function resolve(Request $request): string
-    {
-        return (string) $request->attributes->get('tenant');
-    }
-}
-
-final class EvaluatorNeverCacheCondition implements CacheConditionInterface
-{
-    public function matches(Request $request): bool
-    {
-        return false;
-    }
-}
-
-final readonly class EvaluatorTestContainer implements ContainerInterface
-{
-    /**
-     * @param array<string, object> $services
-     */
-    public function __construct(
-        private array $services,
-    ) {
-    }
-
-    public function get(string $id): object
-    {
-        return $this->services[$id];
-    }
-
-    public function has(string $id): bool
-    {
-        return isset($this->services[$id]);
     }
 }

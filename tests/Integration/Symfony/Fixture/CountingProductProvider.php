@@ -8,14 +8,14 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 
 /**
- * @implements ProviderInterface<CachedProduct|null>
+ * @implements ProviderInterface<CachedProduct>
  */
 final class CountingProductProvider implements ProviderInterface
 {
     public static int $calls = 0;
 
     /**
-     * @param array<string, string> $uriVariables
+     * @param array<string, mixed> $uriVariables
      * @param array<string, mixed> $context
      */
     public function provide(
@@ -27,7 +27,7 @@ final class CountingProductProvider implements ProviderInterface
 
         $id = $uriVariables['id'] ?? null;
 
-        if ($id === null) {
+        if (!is_string($id)) {
             return null;
         }
 

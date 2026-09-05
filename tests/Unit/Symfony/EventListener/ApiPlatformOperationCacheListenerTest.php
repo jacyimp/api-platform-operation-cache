@@ -6,8 +6,6 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Symfony\EventListener;
 
 use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
@@ -17,9 +15,11 @@ use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use JacyImp\ApiPlatformOperationCache\Symfony\EventListener\ApiPlatformOperationCacheListener;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Symfony\EventListener\Fixture\ListenerTestAuthIdentityResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Symfony\EventListener\Fixture\ListenerTestCacheStore;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Symfony\EventListener\Fixture\ListenerTestContainer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -94,7 +94,6 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
 
         $response = $event->getResponse();
 
-        self::assertNotNull($response);
         self::assertSame(
             '{"cached":true}',
             $response->getContent(),
@@ -251,63 +250,5 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
                 ),
             ),
         );
-    }
-}
-
-final class ListenerTestCacheStore implements CacheStoreInterface
-{
-    public int $getCalls = 0;
-
-    public int $putCalls = 0;
-
-    public ?CachedResponse $lastResponse = null;
-
-    public ?int $lastTtl = null;
-
-    public function __construct(
-        private readonly ?CachedResponse $response = null,
-    ) {
-    }
-
-    public function get(string $key): ?CachedResponse
-    {
-        ++$this->getCalls;
-
-        return $this->response;
-    }
-
-    public function put(
-        string $key,
-        CachedResponse $response,
-        int $ttl,
-    ): void {
-        ++$this->putCalls;
-
-        $this->lastResponse = $response;
-        $this->lastTtl = $ttl;
-    }
-}
-
-final class ListenerTestAuthIdentityResolver implements AuthIdentityResolverInterface
-{
-    public function resolve(Request $request): ?string
-    {
-        return null;
-    }
-}
-
-final class ListenerTestContainer implements ContainerInterface
-{
-    public function get(string $id): object
-    {
-        throw new \LogicException(sprintf(
-            'Unexpected strategy "%s".',
-            $id,
-        ));
-    }
-
-    public function has(string $id): bool
-    {
-        return false;
     }
 }

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 
 use ApiPlatform\Metadata\Get;
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyAnonymousAuthIdentityResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyNeverCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyTestContainer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 #[CoversClass(CacheKeyGenerator::class)]
@@ -265,42 +265,5 @@ final class CacheKeyGeneratorTest extends TestCase
                 ),
             ),
         );
-    }
-}
-
-final class KeyAnonymousAuthIdentityResolver implements AuthIdentityResolverInterface
-{
-    public function resolve(Request $request): ?string
-    {
-        return null;
-    }
-}
-
-final class KeyNeverCacheCondition implements CacheConditionInterface
-{
-    public function matches(Request $request): bool
-    {
-        return false;
-    }
-}
-
-final readonly class KeyTestContainer implements ContainerInterface
-{
-    /**
-     * @param array<string, object> $services
-     */
-    public function __construct(
-        private array $services,
-    ) {
-    }
-
-    public function get(string $id): object
-    {
-        return $this->services[$id];
-    }
-
-    public function has(string $id): bool
-    {
-        return isset($this->services[$id]);
     }
 }

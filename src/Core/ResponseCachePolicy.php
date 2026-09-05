@@ -46,6 +46,10 @@ final class ResponseCachePolicy
     private function hasWildcardVary(Response $response): bool
     {
         foreach ($response->headers->all('Vary') as $value) {
+            if ($value === null) {
+                continue;
+            }
+
             foreach (explode(',', $value) as $header) {
                 if (trim($header) === '*') {
                     return true;

@@ -6,9 +6,6 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 
 use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
-use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
-use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
@@ -18,9 +15,13 @@ use JacyImp\ApiPlatformOperationCache\Core\OperationCacheLookup;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerAnonymousAuthResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerCountingCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerNeverCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerTestCacheStore;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerTestContainer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Psr\Container\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -279,88 +280,5 @@ final class OperationCacheHandlerTest extends TestCase
             cacheStore: $store,
             responseFactory: new CachedResponseFactory($registry),
         );
-    }
-}
-
-final class HandlerTestCacheStore implements CacheStoreInterface
-{
-    public int $getCalls = 0;
-
-    public int $putCalls = 0;
-
-    public ?CachedResponse $lastCached = null;
-
-    public ?int $lastTtl = null;
-
-    public function __construct(
-        private readonly ?CachedResponse $cached = null,
-    ) {
-    }
-
-    public function get(string $key): ?CachedResponse
-    {
-        ++$this->getCalls;
-
-        return $this->cached;
-    }
-
-    public function put(
-        string $key,
-        CachedResponse $response,
-        int $ttl,
-    ): void {
-        ++$this->putCalls;
-
-        $this->lastCached = $response;
-        $this->lastTtl = $ttl;
-    }
-}
-
-final class HandlerAnonymousAuthResolver implements AuthIdentityResolverInterface
-{
-    public function resolve(Request $request): ?string
-    {
-        return null;
-    }
-}
-
-final class HandlerNeverCacheCondition implements CacheConditionInterface
-{
-    public function matches(Request $request): bool
-    {
-        return false;
-    }
-}
-
-final class HandlerCountingCondition implements CacheConditionInterface
-{
-    public int $calls = 0;
-
-    public function matches(Request $request): bool
-    {
-        ++$this->calls;
-
-        return true;
-    }
-}
-
-final readonly class HandlerTestContainer implements ContainerInterface
-{
-    /**
-     * @param array<string, object> $services
-     */
-    public function __construct(
-        private array $services,
-    ) {
-    }
-
-    public function get(string $id): object
-    {
-        return $this->services[$id];
-    }
-
-    public function has(string $id): bool
-    {
-        return isset($this->services[$id]);
     }
 }

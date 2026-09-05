@@ -7,6 +7,7 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Application;
+use Illuminate\Routing\Router;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelServiceProvider;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel\Fixture\ApiPlatformOperationMiddleware;
@@ -462,7 +463,7 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     }
 
     private function cachedRoute(
-        mixed $router,
+        Router $router,
         string $uri,
         string $scenario,
     ): void {
