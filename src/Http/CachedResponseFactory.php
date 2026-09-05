@@ -5,34 +5,59 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Http;
 
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
+use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use LogicException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-final class CachedResponseFactory
+final readonly class CachedResponseFactory
 {
     /**
-     * Headers that are request-specific, transport-specific, or must be
-     * regenerated when the cached response is replayed.
+     * These are never persisted. They are transport-specific or may become
+     * invalid when a cached response is reconstructed or mutated.
      *
      * @var list<string>
      */
-    private const EXCLUDED_HEADERS = [
-        'age',
+    private const MANDATORY_EXCLUDED_HEADERS = [
         'connection',
         'content-length',
-        'date',
         'keep-alive',
         'proxy-authenticate',
         'proxy-authorization',
-        'set-cookie',
         'te',
         'trailer',
         'transfer-encoding',
         'upgrade',
     ];
 
-    public function capture(Response $response): CachedResponse
-    {
+    /**
+     * Safe defaults that userland may explicitly opt out of.
+     *
+     * @var list<string>
+     */
+    private const DEFAULT_EXCLUDED_HEADERS = [
+        'age',
+        'date',
+        'set-cookie',
+    ];
+
+    public function __construct(
+        private CacheStrategyRegistry $strategyRegistry,
+    ) {
+    }
+
+    public function capture(
+        Response $response,
+        Request $request,
+        OperationCache $cache,
+    ): CachedResponse {
+        $response = $this->whenCaching(
+            clone $response,
+            $request,
+            $cache,
+        );
+
         $content = $response->getContent();
 
         if ($content === false) {
@@ -44,28 +69,78 @@ final class CachedResponseFactory
         return new CachedResponse(
             content: $content,
             statusCode: $response->getStatusCode(),
-            headers: $this->cacheableHeaders($response),
+            headers: $this->cacheableHeaders(
+                $response,
+                $cache,
+            ),
         );
     }
 
-    public function restore(CachedResponse $cached): Response
-    {
-        return new Response(
+    public function restore(
+        CachedResponse $cached,
+        Request $request,
+        OperationCache $cache,
+    ): Response {
+        $response = new Response(
             content: $cached->content,
             status: $cached->statusCode,
             headers: $cached->headers,
         );
+
+        if ($cache->responseMutator === null) {
+            return $response;
+        }
+
+        return $this->strategyRegistry
+            ->responseMutator($cache->responseMutator)
+            ->whenServingCachedResponse(
+                $response,
+                $request,
+            );
+    }
+
+    private function whenCaching(
+        Response $response,
+        Request $request,
+        OperationCache $cache,
+    ): Response {
+        if ($cache->responseMutator === null) {
+            return $response;
+        }
+
+        return $this->strategyRegistry
+            ->responseMutator($cache->responseMutator)
+            ->whenCaching(
+                $response,
+                $request,
+            );
     }
 
     /**
      * @return array<string, list<string>>
      */
-    private function cacheableHeaders(Response $response): array
-    {
+    private function cacheableHeaders(
+        Response $response,
+        OperationCache $cache,
+    ): array {
         $excluded = array_fill_keys(
-            self::EXCLUDED_HEADERS,
+            self::MANDATORY_EXCLUDED_HEADERS,
             true,
         );
+
+        if ($cache->excludeDefaultResponseHeaders) {
+            foreach (self::DEFAULT_EXCLUDED_HEADERS as $header) {
+                $excluded[$header] = true;
+            }
+        }
+
+        foreach ($cache->excludeResponseHeaders as $header) {
+            $header = strtolower(trim($header));
+
+            if ($header !== '') {
+                $excluded[$header] = true;
+            }
+        }
 
         foreach ($response->headers->all('connection') as $value) {
             foreach (explode(',', $value) as $header) {
@@ -80,13 +155,13 @@ final class CachedResponseFactory
         $headers = [];
 
         foreach ($response->headers->all() as $name => $values) {
-            $normalizedName = strtolower($name);
+            $name = strtolower($name);
 
-            if (isset($excluded[$normalizedName])) {
+            if (isset($excluded[$name])) {
                 continue;
             }
 
-            $headers[$normalizedName] = $values;
+            $headers[$name] = $values;
         }
 
         ksort($headers);
