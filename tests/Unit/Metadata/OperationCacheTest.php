@@ -8,6 +8,7 @@ use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
+use JacyImp\ApiPlatformOperationCache\Exception\InvalidOperationCacheException;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -90,6 +91,150 @@ final class OperationCacheTest extends TestCase
         );
 
         self::assertTrue($cache->varyByAuth);
+    }
+
+    public function testItRejectsZeroTtl(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Operation cache TTL must be greater than zero.',
+        );
+
+        new OperationCache(ttl: 0);
+    }
+
+    public function testItRejectsNegativeTtl(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+
+        new OperationCache(ttl: -1);
+    }
+
+    public function testItRejectsEmptyVaryHeader(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Vary-by header cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            varyByHeaders: ['   '],
+        );
+    }
+
+    public function testItRejectsDuplicateVaryHeadersCaseInsensitively(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Vary-by header "accept-language" is declared more than once.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            varyByHeaders: [
+                'Accept-Language',
+                'accept-language',
+            ],
+        );
+    }
+
+    public function testItRejectsEmptyExcludedResponseHeader(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Excluded response header cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            excludeResponseHeaders: [''],
+        );
+    }
+
+    public function testItRejectsDuplicateExcludedResponseHeaders(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+
+        new OperationCache(
+            ttl: 300,
+            excludeResponseHeaders: [
+                'X-Request-Id',
+                'x-request-id',
+            ],
+        );
+    }
+
+    public function testItRejectsEmptyCustomAuthResolver(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Authentication vary resolver cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            varyByAuth: ' ',
+        );
+    }
+
+    public function testItRejectsEmptyVaryResolver(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Vary resolver cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            varyByResolver: '',
+        );
+    }
+
+    public function testItRejectsEmptyCondition(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Cache condition cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            when: ' ',
+        );
+    }
+
+    public function testItRejectsEmptyResponseMutator(): void
+    {
+        $this->expectException(
+            InvalidOperationCacheException::class,
+        );
+        $this->expectExceptionMessage(
+            'Response mutator cannot be empty.',
+        );
+
+        new OperationCache(
+            ttl: 300,
+            responseMutator: '',
+        );
     }
 }
 
