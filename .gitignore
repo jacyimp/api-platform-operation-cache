@@ -2,3 +2,4 @@
 vendor
 var
 .phpcs.cache
+composer.lock
