@@ -7,8 +7,11 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidCacheStrategyException;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\AffectedGroupsResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\NeverInvalidationCondition;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\RegistryTestCondition;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\RegistryTestVaryResolver;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\RuntimeCacheGroupResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
@@ -61,6 +64,34 @@ final class CacheStrategyRegistryTest extends TestCase
 
         $registry->varyResolver(
             RegistryTestVaryResolver::class,
+        );
+    }
+
+    public function testItResolvesGroupStrategies(): void
+    {
+        $services = [
+            AffectedGroupsResolver::class => new AffectedGroupsResolver(),
+            NeverInvalidationCondition::class => new NeverInvalidationCondition(),
+            RuntimeCacheGroupResolver::class => new RuntimeCacheGroupResolver(),
+        ];
+        $container = $this->createMock(ContainerInterface::class);
+        $container->method('has')->willReturn(true);
+        $container->method('get')->willReturnCallback(
+            static fn (string $id): object => $services[$id],
+        );
+        $registry = new CacheStrategyRegistry($container);
+
+        self::assertSame(
+            $services[RuntimeCacheGroupResolver::class],
+            $registry->cacheGroupResolver(RuntimeCacheGroupResolver::class),
+        );
+        self::assertSame(
+            $services[NeverInvalidationCondition::class],
+            $registry->invalidationCondition(NeverInvalidationCondition::class),
+        );
+        self::assertSame(
+            $services[AffectedGroupsResolver::class],
+            $registry->invalidationGroupResolver(AffectedGroupsResolver::class),
         );
     }
 

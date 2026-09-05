@@ -15,6 +15,8 @@ final readonly class OperationCache
      * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface>|null $when
      * @param list<string> $excludeResponseHeaders
      * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface>|null $responseMutator
+     * @param list<string> $groups
+     * @param class-string<\JacyImp\ApiPlatformOperationCache\Contract\CacheGroupResolverInterface>|null $groupResolver
      */
     public function __construct(
         public int $ttl,
@@ -25,6 +27,9 @@ final readonly class OperationCache
         public array $excludeResponseHeaders = [],
         public bool $excludeDefaultResponseHeaders = true,
         public ?string $responseMutator = null,
+        public array $groups = [],
+        public ?string $groupResolver = null,
+        public bool $includeDefaultVary = true,
     ) {
         if ($ttl < 1) {
             throw new InvalidOperationCacheException(
@@ -61,12 +66,40 @@ final readonly class OperationCache
             'Cache condition',
         );
 
-        $this->assertOptionalService(
-            $responseMutator,
-            'Response mutator',
-        );
+        $this->assertOptionalService($responseMutator, 'Response mutator',);
+        $this->assertGroups($groups);
+        $this->assertOptionalService($groupResolver, 'Cache group resolver',);
     }
 
+    /**
+     * @param list<string> $groups
+     */
+    private function assertGroups(array $groups): void
+    {
+        $seen = [];
+        foreach ($groups as $group) {
+            $normalized = trim($group);
+            if ($normalized === '') {
+                throw new InvalidOperationCacheException('Cache group cannot be empty.',);
+            }
+
+            if (str_contains($normalized, '*')) {
+                throw new InvalidOperationCacheException(sprintf(
+                    'Cache membership group "%s" cannot contain a wildcard.',
+                    $group,
+                ));
+            }
+
+            if (isset($seen[$normalized])) {
+                throw new InvalidOperationCacheException(sprintf(
+                    'Cache group "%s" is declared more than once.',
+                    $group,
+                ));
+            }
+
+            $seen[$normalized] = true;
+        }
+    }
     /**
      * @param list<string> $headers
      */

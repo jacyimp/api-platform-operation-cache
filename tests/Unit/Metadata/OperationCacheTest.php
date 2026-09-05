@@ -8,6 +8,7 @@ use JacyImp\ApiPlatformOperationCache\Exception\InvalidOperationCacheException;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestAuthIdentityResolver;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestCacheCondition;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestCacheGroupResolver;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestResponseMutator;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Metadata\Fixture\TestVaryResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -28,6 +29,9 @@ final class OperationCacheTest extends TestCase
         self::assertSame([], $cache->excludeResponseHeaders);
         self::assertTrue($cache->excludeDefaultResponseHeaders);
         self::assertNull($cache->responseMutator);
+        self::assertSame([], $cache->groups);
+        self::assertNull($cache->groupResolver);
+        self::assertTrue($cache->includeDefaultVary);
     }
 
     public function testItPreservesFullConfiguration(): void
@@ -46,6 +50,9 @@ final class OperationCacheTest extends TestCase
             ],
             excludeDefaultResponseHeaders: false,
             responseMutator: TestResponseMutator::class,
+            groups: ['product:{id}'],
+            groupResolver: TestCacheGroupResolver::class,
+            includeDefaultVary: false,
         );
 
         self::assertSame(600, $cache->ttl);
@@ -75,10 +82,10 @@ final class OperationCacheTest extends TestCase
             $cache->excludeResponseHeaders,
         );
         self::assertFalse($cache->excludeDefaultResponseHeaders);
-        self::assertSame(
-            TestResponseMutator::class,
-            $cache->responseMutator,
-        );
+        self::assertSame(TestResponseMutator::class, $cache->responseMutator,);
+        self::assertSame(['product:{id}'], $cache->groups);
+        self::assertSame(TestCacheGroupResolver::class, $cache->groupResolver);
+        self::assertFalse($cache->includeDefaultVary);
     }
 
     public function testItSupportsBuiltInAuthVariation(): void
@@ -89,6 +96,33 @@ final class OperationCacheTest extends TestCase
         );
 
         self::assertTrue($cache->varyByAuth);
+    }
+
+    public function testItRejectsEmptyCacheGroup(): void
+    {
+        $this->expectException(InvalidOperationCacheException::class);
+        new OperationCache(ttl: 300, groups: [' ']);
+    }
+
+    public function testItRejectsWildcardCacheMembership(): void
+    {
+        $this->expectException(InvalidOperationCacheException::class);
+        new OperationCache(ttl: 300, groups: ['product:*']);
+    }
+
+    public function testItRejectsDuplicateCacheGroups(): void
+    {
+        $this->expectException(InvalidOperationCacheException::class);
+        new OperationCache(ttl: 300, groups: ['products', ' products ']);
+    }
+
+    public function testItRejectsEmptyCacheGroupResolver(): void
+    {
+        $this->expectException(InvalidOperationCacheException::class);
+        (new \ReflectionClass(OperationCache::class))->newInstanceArgs([
+            'ttl' => 300,
+            'groupResolver' => '',
+        ]);
     }
 
     public function testItRejectsZeroTtl(): void

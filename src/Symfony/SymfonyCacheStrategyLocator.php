@@ -20,17 +20,26 @@ final class SymfonyCacheStrategyLocator implements ContainerInterface
      * @param iterable<object> $authIdentityResolvers
      * @param iterable<object> $conditions
      * @param iterable<object> $responseMutators
+     * @param iterable<object> $cacheGroupResolvers
+     * @param iterable<object> $invalidationConditions
+     * @param iterable<object> $invalidationGroupResolvers
      */
     public function __construct(
         iterable $varyResolvers,
         iterable $authIdentityResolvers,
         iterable $conditions,
         iterable $responseMutators,
+        iterable $cacheGroupResolvers = [],
+        iterable $invalidationConditions = [],
+        iterable $invalidationGroupResolvers = [],
     ) {
         $this->register($varyResolvers);
         $this->register($authIdentityResolvers);
         $this->register($conditions);
         $this->register($responseMutators);
+        $this->register($cacheGroupResolvers);
+        $this->register($invalidationConditions);
+        $this->register($invalidationGroupResolvers);
     }
 
     public function get(string $id): object

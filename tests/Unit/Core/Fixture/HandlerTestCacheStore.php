@@ -39,4 +39,18 @@ final class HandlerTestCacheStore implements CacheStoreInterface
         $this->lastCached = $response;
         $this->lastTtl = $ttl;
     }
+
+    /**
+     * @param list<string> $keys
+     *
+     * @return array<string, string>
+     */
+    public function getGenerations(array $keys): array
+    {
+        return [];
+    }
+
+    public function putGeneration(string $key, string $generation,): void
+    {
+    }
 }

@@ -7,6 +7,9 @@ namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
@@ -272,11 +275,15 @@ final class OperationCacheHandlerTest extends TestCase
             new HandlerAnonymousAuthResolver(),
             $registry,
         );
-
+        $normalizer = new CacheGroupNormalizer();
         return new OperationCacheHandler(
             metadataExtractor: new OperationCacheMetadataExtractor(),
             cachePolicy: new ResponseCachePolicy(),
-            keyGenerator: new CacheKeyGenerator($evaluator),
+            keyGenerator: new CacheKeyGenerator(
+                $evaluator,
+                new CacheGroupResolver($normalizer, $registry),
+                new CacheGroupGenerationManager($store),
+            ),
             cacheStore: $store,
             responseFactory: new CachedResponseFactory($registry),
         );

@@ -160,18 +160,47 @@ final class OperationCacheEvaluatorTest extends TestCase
         );
     }
 
+    public function testItCombinesDefaultAndOperationVaryHeaders(): void
+    {
+        $request = Request::create('/');
+        $request->headers->set('X-Tenant', '12');
+        $request->headers->set('X-Currency', 'EUR');
+        $evaluator = $this->evaluator(defaultHeaders: ['X-Tenant', 'x-tenant']);
+        self::assertSame([
+                'header:x-currency' => '["EUR"]',
+                'header:x-tenant' => '["12"]',
+            ], $evaluator->evaluate(new OperationCache(ttl: 300, varyByHeaders: ['X-Currency']), $request,),);
+        self::assertSame(
+            ['header:x-currency' => '["EUR"]'],
+            $evaluator->evaluate(
+                new OperationCache(
+                    ttl: 300,
+                    varyByHeaders: ['X-Currency'],
+                    includeDefaultVary: false,
+                ),
+                $request,
+            ),
+        );
+    }
+
+    public function testItRejectsEmptyDefaultVaryHeader(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->evaluator(defaultHeaders: [' ']);
+    }
     /**
      * @param array<string, object> $services
+     * @param list<string> $defaultHeaders
      */
     private function evaluator(
         array $services = [],
         ?string $defaultIdentity = null,
+        array $defaultHeaders = [],
     ): OperationCacheEvaluator {
         return new OperationCacheEvaluator(
             new EvaluatorDefaultAuthResolver($defaultIdentity),
-            new CacheStrategyRegistry(
-                new EvaluatorTestContainer($services),
-            ),
+            new CacheStrategyRegistry(new EvaluatorTestContainer($services),),
+            $defaultHeaders,
         );
     }
 }

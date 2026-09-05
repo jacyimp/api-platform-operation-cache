@@ -17,6 +17,7 @@ The published configuration contains:
 ```php
 return [
     'store' => null,
+    'vary_by_headers' => [],
 ];
 ```
 
@@ -27,6 +28,10 @@ To use another configured Laravel store:
 ```php
 return [
     'store' => 'redis',
+    'vary_by_headers' => [
+        'Accept-Language',
+        'X-Currency',
+    ],
 ];
 ```
 

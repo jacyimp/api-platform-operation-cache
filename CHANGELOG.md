@@ -4,6 +4,16 @@ All notable changes to `jacyimp/api-platform-operation-cache` will be documented
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-09-05
+
+### Added
+
+* Static, interpolated, and runtime cache groups.
+* Generation-based exact, prefix, and global invalidation without cache scans.
+* Conditional and dynamic `OperationCacheInvalidation` metadata.
+* Imperative invalidation through `CacheInvalidatorInterface`.
+* Application default vary headers with `includeDefaultVary` opt-out.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added

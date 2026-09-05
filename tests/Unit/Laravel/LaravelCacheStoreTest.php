@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Laravel;
 
-use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Cache\Repository;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelCacheStore;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -87,5 +87,27 @@ final class LaravelCacheStoreTest extends TestCase
             $response,
             300,
         );
+    }
+
+    public function testItReadsOnlyStringGenerations(): void
+    {
+        $cache = $this->createMock(Repository::class);
+        $cache->method('many')->with(['one', 'two'])->willReturn([
+            'one' => 'generation',
+            'two' => 42,
+        ]);
+
+        self::assertSame(
+            ['one' => 'generation'],
+            (new LaravelCacheStore($cache))->getGenerations(['one', 'two']),
+        );
+    }
+
+    public function testItStoresGenerationForever(): void
+    {
+        $cache = $this->createMock(Repository::class);
+        $cache->expects(self::once())->method('forever')->with('key', 'generation');
+
+        (new LaravelCacheStore($cache))->putGeneration('key', 'generation');
     }
 }

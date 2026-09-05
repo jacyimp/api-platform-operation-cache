@@ -6,6 +6,9 @@ namespace JacyImp\ApiPlatformOperationCache\Core;
 
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheGroupResolverInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidationConditionInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidationGroupResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidCacheStrategyException;
@@ -55,6 +58,29 @@ final readonly class CacheStrategyRegistry
         );
     }
 
+    /**
+     * @param class-string<CacheGroupResolverInterface> $resolver
+     */
+    public function cacheGroupResolver(string $resolver,): CacheGroupResolverInterface
+    {
+        return $this->get($resolver, CacheGroupResolverInterface::class,);
+    }
+
+    /**
+     * @param class-string<CacheInvalidationConditionInterface> $condition
+     */
+    public function invalidationCondition(string $condition,): CacheInvalidationConditionInterface
+    {
+        return $this->get($condition, CacheInvalidationConditionInterface::class,);
+    }
+
+    /**
+     * @param class-string<CacheInvalidationGroupResolverInterface> $resolver
+     */
+    public function invalidationGroupResolver(string $resolver,): CacheInvalidationGroupResolverInterface
+    {
+        return $this->get($resolver, CacheInvalidationGroupResolverInterface::class,);
+    }
     /**
      * @param class-string<ResponseMutatorInterface> $mutator
      */

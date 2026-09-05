@@ -8,14 +8,23 @@ use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInter
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheGroupResolverInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidationConditionInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidationGroupResolverInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\ResponseMutatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\VaryResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Core\AnonymousAuthIdentityResolver;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
+use JacyImp\ApiPlatformOperationCache\Core\CacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Symfony\EventListener\ApiPlatformOperationCacheListener;
@@ -46,6 +55,15 @@ final class ApiPlatformOperationCacheExtension extends Extension
     public const RESPONSE_MUTATOR_TAG =
         'jacyimp.api_platform_operation_cache.response_mutator';
 
+    public const CACHE_GROUP_RESOLVER_TAG =
+        'jacyimp.api_platform_operation_cache.cache_group_resolver';
+
+    public const INVALIDATION_CONDITION_TAG =
+        'jacyimp.api_platform_operation_cache.invalidation_condition';
+
+    public const INVALIDATION_GROUP_RESOLVER_TAG =
+        'jacyimp.api_platform_operation_cache.invalidation_group_resolver';
+
     /**
      * @param array<array-key, mixed> $configs
      */
@@ -53,7 +71,7 @@ final class ApiPlatformOperationCacheExtension extends Extension
         array $configs,
         ContainerBuilder $container,
     ): void {
-        /** @var array{cache_pool: string} $config */
+        /** @var array{cache_pool: string, vary_by_headers: list<string>} $config */
         $config = $this->processConfiguration(
             new Configuration(),
             $configs,
@@ -62,7 +80,11 @@ final class ApiPlatformOperationCacheExtension extends Extension
         $this->registerStrategyAutoconfiguration($container);
         $this->registerStrategyRegistry($container);
         $this->registerAuthResolver($container);
-        $this->registerCore($container, $config['cache_pool']);
+        $this->registerCore(
+            $container,
+            $config['cache_pool'],
+            $config['vary_by_headers'],
+        );
         $this->registerListener($container);
     }
 
@@ -84,6 +106,18 @@ final class ApiPlatformOperationCacheExtension extends Extension
         $container
             ->registerForAutoconfiguration(ResponseMutatorInterface::class)
             ->addTag(self::RESPONSE_MUTATOR_TAG);
+
+        $container
+            ->registerForAutoconfiguration(CacheGroupResolverInterface::class)
+            ->addTag(self::CACHE_GROUP_RESOLVER_TAG);
+
+        $container
+            ->registerForAutoconfiguration(CacheInvalidationConditionInterface::class)
+            ->addTag(self::INVALIDATION_CONDITION_TAG);
+
+        $container
+            ->registerForAutoconfiguration(CacheInvalidationGroupResolverInterface::class)
+            ->addTag(self::INVALIDATION_GROUP_RESOLVER_TAG);
     }
 
     private function registerStrategyRegistry(
@@ -106,6 +140,15 @@ final class ApiPlatformOperationCacheExtension extends Extension
                 ),
                 new TaggedIteratorArgument(
                     self::RESPONSE_MUTATOR_TAG,
+                ),
+                new TaggedIteratorArgument(
+                    self::CACHE_GROUP_RESOLVER_TAG,
+                ),
+                new TaggedIteratorArgument(
+                    self::INVALIDATION_CONDITION_TAG,
+                ),
+                new TaggedIteratorArgument(
+                    self::INVALIDATION_GROUP_RESOLVER_TAG,
                 ),
             ]);
 
@@ -162,9 +205,13 @@ final class ApiPlatformOperationCacheExtension extends Extension
         // @codeCoverageIgnoreEnd
     }
 
+    /**
+     * @param list<string> $defaultVaryByHeaders
+     */
     private function registerCore(
         ContainerBuilder $container,
         string $cachePool,
+        array $defaultVaryByHeaders,
     ): void {
         $container->register(
             OperationCacheMetadataExtractor::class,
@@ -183,6 +230,16 @@ final class ApiPlatformOperationCacheExtension extends Extension
                 new Reference(
                     CacheStrategyRegistry::class,
                 ),
+                $defaultVaryByHeaders,
+            ]);
+
+        $container->register(CacheGroupNormalizer::class);
+
+        $container
+            ->register(CacheGroupResolver::class)
+            ->setArguments([
+                new Reference(CacheGroupNormalizer::class),
+                new Reference(CacheStrategyRegistry::class),
             ]);
 
         $container
@@ -191,6 +248,8 @@ final class ApiPlatformOperationCacheExtension extends Extension
                 new Reference(
                     OperationCacheEvaluator::class,
                 ),
+                new Reference(CacheGroupResolver::class),
+                new Reference(CacheGroupGenerationManager::class),
             ]);
 
         $container
@@ -211,6 +270,33 @@ final class ApiPlatformOperationCacheExtension extends Extension
             CacheStoreInterface::class,
             SymfonyCacheStore::class,
         );
+
+        $container
+            ->register(CacheGroupGenerationManager::class)
+            ->setArguments([
+                new Reference(CacheStoreInterface::class),
+            ]);
+
+        $container
+            ->register(CacheInvalidator::class)
+            ->setArguments([
+                new Reference(CacheGroupNormalizer::class),
+                new Reference(CacheGroupGenerationManager::class),
+            ]);
+
+        $container->setAlias(
+            CacheInvalidatorInterface::class,
+            CacheInvalidator::class,
+        )->setPublic(true);
+
+        $container
+            ->register(OperationCacheInvalidator::class)
+            ->setArguments([
+                new Reference(OperationCacheMetadataExtractor::class),
+                new Reference(CacheGroupNormalizer::class),
+                new Reference(CacheStrategyRegistry::class),
+                new Reference(CacheInvalidatorInterface::class),
+            ]);
 
         $container
             ->register(OperationCacheHandler::class)
@@ -247,6 +333,9 @@ final class ApiPlatformOperationCacheExtension extends Extension
                 new Reference(
                     ResourceMetadataCollectionFactoryInterface::class,
                     ContainerInterface::NULL_ON_INVALID_REFERENCE,
+                ),
+                new Reference(
+                    OperationCacheInvalidator::class,
                 ),
             ])
             ->addTag(

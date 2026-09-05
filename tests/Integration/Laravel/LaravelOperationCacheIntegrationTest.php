@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Application;
 use Illuminate\Routing\Router;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
 use JacyImp\ApiPlatformOperationCache\Laravel\LaravelServiceProvider;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Laravel\Fixture\ApiPlatformOperationMiddleware;
@@ -51,6 +52,10 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             'api-platform-operation-cache.store',
             'array',
         );
+        $config->set(
+            'api-platform-operation-cache.vary_by_headers',
+            ['X-Currency'],
+        );
     }
 
     protected function defineRoutes(
@@ -91,6 +96,8 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             '/header-vary-products/{id}',
             'header',
         );
+        $this->cachedRoute($router, '/default-vary-products/{id}', 'default-vary');
+        $this->cachedRoute($router, '/no-default-vary-products/{id}', 'no-default-vary');
 
         $this->cachedRoute(
             $router,
@@ -170,6 +177,26 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
     }
 
     #[Test]
+    public function exactPrefixAndGlobalInvalidation(): void
+    {
+        $this->assertEndpointValue('/cached-products/1', 'endpoint-call-1');
+        $this->assertEndpointValue('/cached-products/2', 'endpoint-call-2');
+        $invalidator = $this->application()->make(CacheInvalidatorInterface::class);
+
+        $invalidator->invalidateGroups(['product:1']);
+        $this->assertEndpointValue('/cached-products/1', 'endpoint-call-3');
+        $this->assertEndpointValue('/cached-products/2', 'endpoint-call-2');
+
+        $invalidator->invalidateGroups(['product:*']);
+        $this->assertEndpointValue('/cached-products/1', 'endpoint-call-4');
+        $this->assertEndpointValue('/cached-products/2', 'endpoint-call-5');
+
+        $invalidator->invalidateGroups(['*']);
+        $this->assertEndpointValue('/cached-products/1', 'endpoint-call-6');
+        $this->assertEndpointValue('/cached-products/2', 'endpoint-call-7');
+    }
+
+    #[Test]
     public function differentQueryStringsUseDifferentCacheEntries(): void
     {
         $this->assertEndpointValue(
@@ -243,6 +270,15 @@ final class LaravelOperationCacheIntegrationTest extends TestCase
             2,
             CountingEndpoint::$calls,
         );
+    }
+
+    #[Test]
+    public function defaultVaryHeadersAndOptOut(): void
+    {
+        $this->assertEndpointValue('/default-vary-products/42', 'endpoint-call-1', ['X-Currency' => 'USD']);
+        $this->assertEndpointValue('/default-vary-products/42', 'endpoint-call-2', ['X-Currency' => 'EUR']);
+        $this->assertEndpointValue('/no-default-vary-products/42', 'endpoint-call-3', ['X-Currency' => 'USD']);
+        $this->assertEndpointValue('/no-default-vary-products/42', 'endpoint-call-3', ['X-Currency' => 'EUR']);
     }
 
     #[Test]

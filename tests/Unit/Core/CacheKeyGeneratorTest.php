@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Tests\Unit\Core;
 
 use ApiPlatform\Metadata\Get;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\HandlerTestCacheStore;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyAnonymousAuthIdentityResolver;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyNeverCacheCondition;
 use JacyImp\ApiPlatformOperationCache\Tests\Unit\Core\Fixture\KeyTestContainer;
@@ -247,7 +251,7 @@ final class CacheKeyGeneratorTest extends TestCase
 
         self::assertNotNull($key);
         self::assertMatchesRegularExpression(
-            '/^api_platform_operation_cache\.v1\.[a-f0-9]{64}$/',
+            '/^api_platform_operation_cache\.v2\.[a-f0-9]{64}$/',
             $key,
         );
     }
@@ -257,13 +261,15 @@ final class CacheKeyGeneratorTest extends TestCase
      */
     private function generator(array $services = []): CacheKeyGenerator
     {
+        $registry = new CacheStrategyRegistry(new KeyTestContainer($services),);
+        $normalizer = new CacheGroupNormalizer();
         return new CacheKeyGenerator(
             new OperationCacheEvaluator(
                 new KeyAnonymousAuthIdentityResolver(),
-                new CacheStrategyRegistry(
-                    new KeyTestContainer($services),
-                ),
+                $registry,
             ),
+            new CacheGroupResolver($normalizer, $registry),
+            new CacheGroupGenerationManager(new HandlerTestCacheStore()),
         );
     }
 }

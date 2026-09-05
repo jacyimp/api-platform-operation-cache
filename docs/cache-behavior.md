@@ -38,11 +38,13 @@ Configured variation dimensions are then added through:
 * `varyByAuth`;
 * `varyByResolver`.
 
+Application `vary_by_headers` defaults are merged with operation headers. Set `includeDefaultVary: false` to opt out for one operation.
+
 Associative query parameters are canonicalized before hashing, so equivalent query parameter ordering produces the same key.
 
 ## Expiration
 
-Entries expire after `ttl` seconds. Resource writes do not invalidate them automatically; the package provides no tagging or invalidation API. Choose a TTL that matches how long stale responses are acceptable.
+Entries expire after `ttl` seconds. Declared group invalidation changes generation records without scanning response keys; old entries become unreachable and expire naturally.
 
 ## All options
 
@@ -56,6 +58,9 @@ new OperationCache(
     excludeResponseHeaders: [],
     excludeDefaultResponseHeaders: true,
     responseMutator: null,
+    groups: [],
+    groupResolver: null,
+    includeDefaultVary: true,
 )
 ```
 

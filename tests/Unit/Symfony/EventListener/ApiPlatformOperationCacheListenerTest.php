@@ -10,6 +10,9 @@ use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInter
 use ApiPlatform\Metadata\Resource\ResourceMetadataCollection;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
@@ -265,12 +268,17 @@ final class ApiPlatformOperationCacheListenerTest extends TestCase
             new ListenerTestAuthIdentityResolver(),
             $registry,
         );
+        $normalizer = new CacheGroupNormalizer();
 
         return new ApiPlatformOperationCacheListener(
             new OperationCacheHandler(
                 metadataExtractor: new OperationCacheMetadataExtractor(),
                 cachePolicy: new ResponseCachePolicy(),
-                keyGenerator: new CacheKeyGenerator($evaluator),
+                keyGenerator: new CacheKeyGenerator(
+                    $evaluator,
+                    new CacheGroupResolver($normalizer, $registry),
+                    new CacheGroupGenerationManager($store),
+                ),
                 cacheStore: $store,
                 responseFactory: new CachedResponseFactory(
                     $registry,

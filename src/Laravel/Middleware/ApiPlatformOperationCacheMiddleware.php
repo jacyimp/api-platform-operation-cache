@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use Closure;
 use Illuminate\Http\Request;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,9 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class ApiPlatformOperationCacheMiddleware
 {
-    public function __construct(
-        private OperationCacheHandler $handler,
-    ) {
+    public function __construct(private OperationCacheHandler $handler, private OperationCacheInvalidator $invalidator,)
+    {
     }
 
     /**
@@ -45,6 +45,7 @@ final readonly class ApiPlatformOperationCacheMiddleware
         }
 
         $response = $next($request);
+        $this->invalidator->invalidate($operation, $request, $response,);
 
         if ($lookup->context !== null) {
             $this->handler->store(

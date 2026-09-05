@@ -16,9 +16,7 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
             uriTemplate: '/cached-products/{id}',
             provider: CountingProductProvider::class,
             extraProperties: [
-                OperationCache::class => new OperationCache(
-                    ttl: 300,
-                ),
+                OperationCache::class => new OperationCache(ttl: 300, groups: ['product:{id}'],),
             ],
         ),
         new Get(
@@ -40,6 +38,23 @@ use JacyImp\ApiPlatformOperationCache\Tests\Fixture\ResponseBehaviorMutator;
                     varyByHeaders: [
                         'Accept-Language',
                     ],
+                ),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/default-vary-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(ttl: 300),
+            ],
+        ),
+        new Get(
+            uriTemplate: '/no-default-vary-products/{id}',
+            provider: CountingProductProvider::class,
+            extraProperties: [
+                OperationCache::class => new OperationCache(
+                    ttl: 300,
+                    includeDefaultVary: false,
                 ),
             ],
         ),

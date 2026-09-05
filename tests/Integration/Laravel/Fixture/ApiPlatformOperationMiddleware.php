@@ -21,6 +21,11 @@ final class ApiPlatformOperationMiddleware
         Closure $next,
         string $scenario = 'plain',
     ): Response {
+        $routeId = $request->route('id');
+        if (is_string($routeId)) {
+            $request->attributes->set('id', $routeId);
+        }
+
         $cache = match ($scenario) {
             'condition' => new OperationCache(
                 ttl: 300,
@@ -32,6 +37,11 @@ final class ApiPlatformOperationMiddleware
                 varyByHeaders: [
                     'Accept-Language',
                 ],
+            ),
+
+            'no-default-vary' => new OperationCache(
+                ttl: 300,
+                includeDefaultVary: false,
             ),
 
             'auth' => new OperationCache(
@@ -63,9 +73,7 @@ final class ApiPlatformOperationMiddleware
                 responseMutator: ResponseBehaviorMutator::class,
             ),
 
-            default => new OperationCache(
-                ttl: 300,
-            ),
+            default => new OperationCache(ttl: 300, groups: ['product:{id}'],),
         };
 
         $request->attributes->set(

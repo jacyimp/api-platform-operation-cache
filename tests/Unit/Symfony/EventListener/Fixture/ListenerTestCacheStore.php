@@ -39,4 +39,18 @@ final class ListenerTestCacheStore implements CacheStoreInterface
         $this->lastResponse = $response;
         $this->lastTtl = $ttl;
     }
+
+    /**
+     * @param list<string> $keys
+     *
+     * @return array<string, string>
+     */
+    public function getGenerations(array $keys): array
+    {
+        return [];
+    }
+
+    public function putGeneration(string $key, string $generation,): void
+    {
+    }
 }

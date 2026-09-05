@@ -13,10 +13,11 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final readonly class CacheKeyGenerator
 {
-    private const VERSION = 1;
-
+    private const VERSION = 2;
     public function __construct(
         private OperationCacheEvaluator $cacheEvaluator,
+        private CacheGroupResolver $groupResolver,
+        private CacheGroupGenerationManager $generationManager,
     ) {
     }
 
@@ -31,6 +32,7 @@ final readonly class CacheKeyGenerator
             return null;
         }
 
+        $groups = $this->groupResolver->resolve($cache, $request);
         $payload = [
             'version' => self::VERSION,
             'operation' => [
@@ -46,6 +48,7 @@ final readonly class CacheKeyGenerator
                 'format' => $request->getRequestFormat(),
             ],
             'vary' => $variation,
+            'groupGenerations' => $this->generationManager->generationsFor($groups),
         ];
 
         return sprintf(

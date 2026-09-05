@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace JacyImp\ApiPlatformOperationCache\Laravel;
 
 use Illuminate\Cache\CacheManager;
+use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
+use JacyImp\ApiPlatformOperationCache\Core\CacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
@@ -79,20 +86,26 @@ final class LaravelServiceProvider extends ServiceProvider
                 $app->make(
                     AuthIdentityResolverInterface::class,
                 ),
-                $app->make(
-                    CacheStrategyRegistry::class,
-                ),
+                $app->make(CacheStrategyRegistry::class,),
+                self::defaultVaryByHeaders($app),
             ),
         );
-
+        $this->app->singleton(CacheGroupNormalizer::class);
+        $this->app->singleton(
+            CacheGroupResolver::class,
+            static fn (Application $app): CacheGroupResolver => new CacheGroupResolver(
+                $app->make(CacheGroupNormalizer::class),
+                $app->make(CacheStrategyRegistry::class),
+            ),
+        );
         $this->app->singleton(
             CacheKeyGenerator::class,
             static fn (
                 Application $app,
             ): CacheKeyGenerator => new CacheKeyGenerator(
-                $app->make(
-                    OperationCacheEvaluator::class,
-                ),
+                $app->make(OperationCacheEvaluator::class),
+                $app->make(CacheGroupResolver::class),
+                $app->make(CacheGroupGenerationManager::class),
             ),
         );
 
@@ -127,16 +140,17 @@ final class LaravelServiceProvider extends ServiceProvider
                             ? $store
                             : null,
                     );
+                if (!$repository instanceof CacheRepository) {
+                    // @codeCoverageIgnoreStart
+                    throw new \LogicException('Laravel cache manager must return an Illuminate cache repository.',);
+                    // @codeCoverageIgnoreEnd
+                }
 
-                return new LaravelCacheStore(
-                    $repository,
-                );
+                return new LaravelCacheStore($repository,);
             },
         );
 
-        $this->app->singleton(
-            OperationCacheHandler::class,
-            static fn (
+        $this->app->singleton(OperationCacheHandler::class, static fn (
                 Application $app,
             ): OperationCacheHandler => new OperationCacheHandler(
                 metadataExtractor: $app->make(
@@ -154,9 +168,30 @@ final class LaravelServiceProvider extends ServiceProvider
                 responseFactory: $app->make(
                     CachedResponseFactory::class,
                 ),
+            ),);
+        $this->app->singleton(
+            CacheGroupGenerationManager::class,
+            static fn (Application $app): CacheGroupGenerationManager => new CacheGroupGenerationManager(
+                $app->make(CacheStoreInterface::class),
             ),
         );
-
+        $this->app->singleton(
+            CacheInvalidator::class,
+            static fn (Application $app): CacheInvalidator => new CacheInvalidator(
+                $app->make(CacheGroupNormalizer::class),
+                $app->make(CacheGroupGenerationManager::class),
+            ),
+        );
+        $this->app->alias(CacheInvalidator::class, CacheInvalidatorInterface::class,);
+        $this->app->singleton(
+            OperationCacheInvalidator::class,
+            static fn (Application $app): OperationCacheInvalidator => new OperationCacheInvalidator(
+                $app->make(OperationCacheMetadataExtractor::class),
+                $app->make(CacheGroupNormalizer::class),
+                $app->make(CacheStrategyRegistry::class),
+                $app->make(CacheInvalidatorInterface::class),
+            ),
+        );
         $this->app->singleton(
             ApiPlatformOperationCacheMiddleware::class,
         );
@@ -210,5 +245,28 @@ final class LaravelServiceProvider extends ServiceProvider
             'api-platform.defaults.middleware',
             $middleware,
         );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function defaultVaryByHeaders(Application $app,): array
+    {
+        $headers = $app
+            ->make(ConfigRepository::class)
+            ->get('api-platform-operation-cache.vary_by_headers', []);
+        if (!is_array($headers)) {
+            throw new \InvalidArgumentException(
+                'The api-platform-operation-cache.vary_by_headers configuration must be an array.',
+            );
+        }
+
+        foreach ($headers as $header) {
+            if (!is_string($header)) {
+                throw new \InvalidArgumentException('Every default vary-by header must be a string.',);
+            }
+        }
+
+        return array_values($headers);
     }
 }

@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Exception\InvalidOperationCacheMetadataException;
 use JacyImp\ApiPlatformOperationCache\Metadata\OperationCache;
+use JacyImp\ApiPlatformOperationCache\Metadata\OperationCacheInvalidation;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -58,5 +59,26 @@ final class OperationCacheMetadataExtractorTest extends TestCase
         ));
 
         $this->extractor->extract($operation);
+    }
+
+    public function testItExtractsRepeatedInvalidationMetadata(): void
+    {
+        $first = new OperationCacheInvalidation(group: 'product:{id}');
+        $second = new OperationCacheInvalidation(group: 'products');
+        self::assertSame(
+            [$first, $second],
+            $this->extractor->extractInvalidations(
+                new Get(extraProperties: [$first, $second]),
+            ),
+        );
+        self::assertSame([], $this->extractor->extractInvalidations(new Get()));
+    }
+
+    public function testItRejectsInvalidClassKeyedInvalidationMetadata(): void
+    {
+        $this->expectException(InvalidOperationCacheMetadataException::class);
+        $this->extractor->extractInvalidations(new Get(extraProperties: [
+            OperationCacheInvalidation::class => 'invalid',
+        ]));
     }
 }

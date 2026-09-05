@@ -62,6 +62,11 @@ final class OperationCacheTestKernel extends Kernel
             ],
         );
 
+        $container->extension(
+            'api_platform_operation_cache',
+            ['vary_by_headers' => ['X-Currency']],
+        );
+
         $services = $container->services();
 
         foreach (

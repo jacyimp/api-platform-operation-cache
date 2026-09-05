@@ -13,10 +13,27 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final readonly class OperationCacheEvaluator
 {
+    /** @var list<string> */
+    private array $defaultVaryByHeaders;
+/**
+     * @param list<string> $defaultVaryByHeaders
+     */
     public function __construct(
         private AuthIdentityResolverInterface $defaultAuthIdentityResolver,
         private CacheStrategyRegistry $strategyRegistry,
+        array $defaultVaryByHeaders = [],
     ) {
+        $headers = [];
+        foreach ($defaultVaryByHeaders as $header) {
+            $normalized = strtolower(trim($header));
+            if ($normalized === '') {
+                throw new \InvalidArgumentException('Default vary-by header cannot be empty.',);
+            }
+
+            $headers[$normalized] = $normalized;
+        }
+
+        $this->defaultVaryByHeaders = array_values($headers);
     }
 
     /**
@@ -62,9 +79,11 @@ final readonly class OperationCacheEvaluator
     ): array {
         $variation = [];
 
-        foreach ($cache->varyByHeaders as $header) {
+        $headers = $cache->includeDefaultVary
+            ? [...$this->defaultVaryByHeaders, ...$cache->varyByHeaders]
+            : $cache->varyByHeaders;
+        foreach ($headers as $header) {
             $normalized = strtolower(trim($header));
-
             $variation[sprintf('header:%s', $normalized)] = json_encode(
                 $request->headers->all($header),
                 JSON_THROW_ON_ERROR,

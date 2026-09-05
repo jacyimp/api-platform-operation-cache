@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony;
 
+use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
 use JacyImp\ApiPlatformOperationCache\Tests\Integration\Symfony\Fixture\CountingProductProvider;
 use PHPUnit\Framework\Attributes\After;
 use PHPUnit\Framework\Attributes\Before;
@@ -101,6 +102,30 @@ final class OperationCacheIntegrationTest extends WebTestCase
             2,
             CountingProductProvider::$calls,
         );
+    }
+
+    public function testExactPrefixAndGlobalInvalidation(): void
+    {
+        $client = $this->createCacheClient();
+        $this->getJson($client, '/api/cached-products/1');
+        $this->getJson($client, '/api/cached-products/2');
+        $invalidator = self::getContainer()->get(CacheInvalidatorInterface::class);
+        self::assertInstanceOf(CacheInvalidatorInterface::class, $invalidator);
+
+        $invalidator->invalidateGroups(['product:1']);
+        $this->getJson($client, '/api/cached-products/1');
+        $this->getJson($client, '/api/cached-products/2');
+        self::assertSame(3, CountingProductProvider::$calls);
+
+        $invalidator->invalidateGroups(['product:*']);
+        $this->getJson($client, '/api/cached-products/1');
+        $this->getJson($client, '/api/cached-products/2');
+        self::assertSame(5, CountingProductProvider::$calls);
+
+        $invalidator->invalidateGroups(['*']);
+        $this->getJson($client, '/api/cached-products/1');
+        $this->getJson($client, '/api/cached-products/2');
+        self::assertSame(7, CountingProductProvider::$calls);
     }
 
     public function testDifferentQueryStringsUseDifferentCacheEntries(): void
@@ -220,6 +245,18 @@ final class OperationCacheIntegrationTest extends WebTestCase
             2,
             CountingProductProvider::$calls,
         );
+    }
+
+    public function testDefaultVaryHeadersAndOptOut(): void
+    {
+        $client = $this->createCacheClient();
+        $this->getJson($client, '/api/default-vary-products/42', ['HTTP_X_CURRENCY' => 'USD']);
+        $this->getJson($client, '/api/default-vary-products/42', ['HTTP_X_CURRENCY' => 'EUR']);
+        self::assertSame(2, CountingProductProvider::$calls);
+
+        $this->getJson($client, '/api/no-default-vary-products/42', ['HTTP_X_CURRENCY' => 'USD']);
+        $this->getJson($client, '/api/no-default-vary-products/42', ['HTTP_X_CURRENCY' => 'EUR']);
+        self::assertSame(3, CountingProductProvider::$calls);
     }
 
     public function testVaryByAuthCreatesIndependentCacheEntries(): void

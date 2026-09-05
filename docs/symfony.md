@@ -33,6 +33,9 @@ To select another PSR-6 cache pool:
 
 api_platform_operation_cache:
     cache_pool: cache.api_platform
+    vary_by_headers:
+        - Accept-Language
+        - X-Currency
 ```
 
 With normal Symfony service autoconfiguration enabled, implementations of these interfaces are discovered automatically:
@@ -41,6 +44,9 @@ With normal Symfony service autoconfiguration enabled, implementations of these 
 * `AuthIdentityResolverInterface`
 * `CacheConditionInterface`
 * `ResponseMutatorInterface`
+* `CacheGroupResolverInterface`
+* `CacheInvalidationConditionInterface`
+* `CacheInvalidationGroupResolverInterface`
 
 For example:
 

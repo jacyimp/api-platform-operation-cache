@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Laravel;
 
-use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Cache\Repository;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
 
@@ -37,5 +37,30 @@ final readonly class LaravelCacheStore implements CacheStoreInterface
             $response,
             $ttl,
         );
+    }
+
+    /**
+     * @param list<string> $keys
+     *
+     * @return array<string, string>
+     */
+    public function getGenerations(array $keys): array
+    {
+        $values = $this->cache->many($keys);
+        $generations = [];
+        foreach ($values as $key => $value) {
+            if (!is_string($key) || !is_string($value)) {
+                continue;
+            }
+
+            $generations[$key] = $value;
+        }
+
+        return $generations;
+    }
+
+    public function putGeneration(string $key, string $generation,): void
+    {
+        $this->cache->forever($key, $generation);
     }
 }

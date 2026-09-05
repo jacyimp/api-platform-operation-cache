@@ -8,10 +8,15 @@ use ApiPlatform\Metadata\Get;
 use Illuminate\Http\Request;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
 use JacyImp\ApiPlatformOperationCache\Core\CachedResponse;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupGenerationManager;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupNormalizer;
+use JacyImp\ApiPlatformOperationCache\Core\CacheGroupResolver;
+use JacyImp\ApiPlatformOperationCache\Core\CacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheKeyGenerator;
 use JacyImp\ApiPlatformOperationCache\Core\CacheStrategyRegistry;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheEvaluator;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use JacyImp\ApiPlatformOperationCache\Core\ResponseCachePolicy;
 use JacyImp\ApiPlatformOperationCache\Http\CachedResponseFactory;
 use JacyImp\ApiPlatformOperationCache\Laravel\Middleware\ApiPlatformOperationCacheMiddleware;
@@ -167,25 +172,31 @@ final class ApiPlatformOperationCacheMiddlewareTest extends TestCase
     private function middleware(
         MiddlewareTestCacheStore $store,
     ): ApiPlatformOperationCacheMiddleware {
-        $registry = new CacheStrategyRegistry(
-            new MiddlewareTestContainer(),
-        );
+        $registry = new CacheStrategyRegistry(new MiddlewareTestContainer(),);
+        $normalizer = new CacheGroupNormalizer();
+        $generationManager = new CacheGroupGenerationManager($store);
+        $metadataExtractor = new OperationCacheMetadataExtractor();
 
-        return new ApiPlatformOperationCacheMiddleware(
-            new OperationCacheHandler(
-                metadataExtractor: new OperationCacheMetadataExtractor(),
-                cachePolicy: new ResponseCachePolicy(),
-                keyGenerator: new CacheKeyGenerator(
-                    new OperationCacheEvaluator(
-                        new MiddlewareTestAuthResolver(),
-                        $registry,
-                    ),
-                ),
-                cacheStore: $store,
-                responseFactory: new CachedResponseFactory(
+        return new ApiPlatformOperationCacheMiddleware(new OperationCacheHandler(
+            metadataExtractor: $metadataExtractor,
+            cachePolicy: new ResponseCachePolicy(),
+            keyGenerator: new CacheKeyGenerator(
+                new OperationCacheEvaluator(
+                    new MiddlewareTestAuthResolver(),
                     $registry,
                 ),
+                new CacheGroupResolver($normalizer, $registry),
+                $generationManager,
             ),
-        );
+            cacheStore: $store,
+            responseFactory: new CachedResponseFactory(
+                $registry,
+            ),
+        ), new OperationCacheInvalidator(
+            $metadataExtractor,
+            $normalizer,
+            $registry,
+            new CacheInvalidator($normalizer, $generationManager),
+        ));
     }
 }

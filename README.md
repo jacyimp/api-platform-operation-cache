@@ -66,7 +66,27 @@ final class Product
 }
 ```
 
-The first cacheable response is stored; matching requests reuse it until expiry. `ttl` is required, in seconds, and must be greater than zero. Resource writes do not automatically invalidate cached responses.
+The first cacheable response is stored; matching requests reuse it until expiry. `ttl` is required, in seconds, and must be greater than zero.
+
+## Cache groups and invalidation
+
+```php
+new OperationCache(ttl: 300, groups: ['product:{id}'])
+```
+
+Declare one or more rules on the custom operation that changes the data:
+
+```php
+new Post(
+    uriTemplate: '/products/{id}/publish',
+    extraProperties: [
+        new OperationCacheInvalidation(group: 'product:{id}'),
+        new OperationCacheInvalidation(group: 'products'),
+    ],
+)
+```
+
+Invalidation runs after success and supports exact groups, prefix namespaces such as `product:*`, and global `*`. It changes generation records without scanning cached responses. [Advanced groups and invalidation →](docs/cache-groups.md)
 
 ## Separate responses by language or currency
 
@@ -78,6 +98,8 @@ new OperationCache(
     varyByHeaders: ['Accept-Language', 'X-Currency'],
 )
 ```
+
+Application configuration may provide default vary headers. Operations include them unless `includeDefaultVary: false` is set. The built-in list is empty; configure `Accept-Language` only when responses are localized, and use `varyByAuth` instead of the raw `Authorization` header.
 
 ## Cache user-specific responses
 

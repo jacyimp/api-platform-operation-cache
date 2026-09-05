@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheContext;
 use JacyImp\ApiPlatformOperationCache\Core\OperationCacheHandler;
+use JacyImp\ApiPlatformOperationCache\Core\OperationCacheInvalidator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -19,9 +20,12 @@ final readonly class ApiPlatformOperationCacheListener
 {
     private const CONTEXT_ATTRIBUTE = '_jacyimp_operation_cache_context';
 
+    private const EXECUTED_OPERATION_ATTRIBUTE = '_jacyimp_operation_cache_executed_operation';
+
     public function __construct(
         private OperationCacheHandler $handler,
         private ?ResourceMetadataCollectionFactoryInterface $resourceMetadataCollectionFactory = null,
+        private ?OperationCacheInvalidator $invalidator = null,
     ) {
     }
 
@@ -49,6 +53,11 @@ final readonly class ApiPlatformOperationCacheListener
             return;
         }
 
+        $request->attributes->set(
+            self::EXECUTED_OPERATION_ATTRIBUTE,
+            $operation,
+        );
+
         if ($lookup->context === null) {
             return;
         }
@@ -66,6 +75,25 @@ final readonly class ApiPlatformOperationCacheListener
         }
 
         $request = $event->getRequest();
+        $operation = $request->attributes->get(
+            self::EXECUTED_OPERATION_ATTRIBUTE,
+        );
+
+        $request->attributes->remove(
+            self::EXECUTED_OPERATION_ATTRIBUTE,
+        );
+
+        if (
+            $operation instanceof HttpOperation
+            && $this->invalidator !== null
+        ) {
+            $this->invalidator->invalidate(
+                $operation,
+                $request,
+                $event->getResponse(),
+            );
+        }
+
         $context = $request->attributes->get(
             self::CONTEXT_ATTRIBUTE,
         );
