@@ -1,6 +1,6 @@
 # API Platform Operation Cache
 
-Cache individual API Platform HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.
+Cache individual API Platform Get/GetCollection HTTP operations in Symfony or Laravel. Cache hits serve the stored response and skip downstream provider/controller processing. Operations without `OperationCache` run normally.
 
 ## Install
 
