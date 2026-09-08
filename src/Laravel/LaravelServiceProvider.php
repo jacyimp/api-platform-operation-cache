@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JacyImp\ApiPlatformOperationCache\Laravel;
 
+use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -12,6 +13,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
+use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheResourceMetadataCollectionFactory;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheInvalidatorInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheStoreInterface;
@@ -214,6 +216,20 @@ final class LaravelServiceProvider extends ServiceProvider
 
     public function boot(Router $router): void
     {
+        if (class_exists(\ApiPlatform\OpenApi\Model\Operation::class)) {
+            $this->app->extend(
+                ResourceMetadataCollectionFactoryInterface::class,
+                static fn (
+                    ResourceMetadataCollectionFactoryInterface $factory,
+                    Application $app,
+                ): ResourceMetadataCollectionFactoryInterface => new OperationCacheResourceMetadataCollectionFactory(
+                    $factory,
+                    $app->make(OperationCacheMetadataExtractor::class),
+                    self::defaultVaryByHeaders($app),
+                ),
+            );
+        }
+
         $router->aliasMiddleware(
             self::MIDDLEWARE,
             ApiPlatformOperationCacheMiddleware::class,

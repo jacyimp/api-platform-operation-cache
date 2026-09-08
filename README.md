@@ -139,6 +139,10 @@ Each authenticated identity gets separate entries; anonymous requests share an a
 
 ## Customize caching
 
+### OpenAPI / Swagger documentation
+
+Cached operations automatically include a **Caching** section in their OpenAPI description (shown in Swagger UI) in Symfony and Laravel. It documents the TTL in seconds, cache key variation (including inherited default headers and authenticated identity), conditional caching, and response exclusions. Existing descriptions and other OpenAPI settings are preserved. Operations without `OperationCache` and operations hidden with `openapi: false` are unchanged.
+
 | Use case | Guide |
 | --- | --- |
 | Skip caching for previews or other requests | [Conditional caching](docs/conditional-caching.md) |

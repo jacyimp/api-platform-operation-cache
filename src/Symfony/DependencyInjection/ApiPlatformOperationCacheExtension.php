@@ -6,6 +6,7 @@ namespace JacyImp\ApiPlatformOperationCache\Symfony\DependencyInjection;
 
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheMetadataExtractor;
+use JacyImp\ApiPlatformOperationCache\ApiPlatform\OperationCacheResourceMetadataCollectionFactory;
 use JacyImp\ApiPlatformOperationCache\Contract\AuthIdentityResolverInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheConditionInterface;
 use JacyImp\ApiPlatformOperationCache\Contract\CacheGroupResolverInterface;
@@ -87,6 +88,22 @@ final class ApiPlatformOperationCacheExtension extends Extension
             $config['vary_by_headers'],
         );
         $this->registerListener($container);
+        if (!class_exists(\ApiPlatform\OpenApi\Model\Operation::class)) {
+            return;
+        }
+
+        $container->register(OperationCacheResourceMetadataCollectionFactory::class)
+            ->setDecoratedService(
+                'api_platform.metadata.resource.metadata_collection_factory',
+                null,
+                -5,
+                ContainerInterface::IGNORE_ON_INVALID_REFERENCE,
+            )
+            ->setArguments([
+                new Reference(OperationCacheResourceMetadataCollectionFactory::class . '.inner'),
+                new Reference(OperationCacheMetadataExtractor::class),
+                $config['vary_by_headers'],
+            ]);
     }
 
     private function registerStrategyAutoconfiguration(

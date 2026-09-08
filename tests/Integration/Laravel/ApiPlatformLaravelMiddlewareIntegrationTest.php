@@ -24,6 +24,23 @@ use PHPUnit\Framework\Attributes\Test;
 
 final class ApiPlatformLaravelMiddlewareIntegrationTest extends TestCase
 {
+    public function testItAddsCachingToOpenApiMetadata(): void
+    {
+        $inner = self::createStub(ResourceMetadataCollectionFactoryInterface::class);
+        $inner->method('create')->willReturn(new ResourceMetadataCollection(self::class, [
+            new ApiResource(operations: [
+                'cached' => new Get(extraProperties: [new OperationCache(ttl: 120)]),
+            ]),
+        ]));
+        $this->application()->bind(ResourceMetadataCollectionFactoryInterface::class, static fn () => $inner);
+        $factory = $this->application()->make(ResourceMetadataCollectionFactoryInterface::class);
+        $operation = $factory->create(self::class)->getOperation('cached');
+        self::assertInstanceOf(\ApiPlatform\Metadata\HttpOperation::class, $operation);
+        $openapi = $operation->getOpenapi();
+        self::assertInstanceOf(\ApiPlatform\OpenApi\Model\Operation::class, $openapi);
+        self::assertStringContainsString('120 seconds (TTL)', $openapi->getDescription() ?? '');
+    }
+
     /**
      * @return list<class-string>
      */

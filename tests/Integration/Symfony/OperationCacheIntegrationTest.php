@@ -19,6 +19,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class OperationCacheIntegrationTest extends WebTestCase
 {
+    public function testOpenApiIncludesCachingDetails(): void
+    {
+        $this->createCacheClient();
+        $factory = self::getContainer()->get('api_platform.openapi.factory');
+        self::assertInstanceOf(\ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface::class, $factory);
+        $description = $factory()->getPaths()->getPath('/api/cached-products/{id}')?->getGet()?->getDescription();
+        self::assertNotNull($description);
+        self::assertStringContainsString('### Caching', $description);
+        self::assertStringContainsString('seconds (TTL)', $description);
+        self::assertStringContainsString('`x-currency`', $description);
+    }
+
     private bool $symfonyErrorHandlerWasRegistered = false;
 
     #[Before]
